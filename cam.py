@@ -444,6 +444,8 @@ def setAwbMode(n):
 	global awbMode
 	awbMode = n
 	camera.awb_mode = awbData[awbMode]
+	if awbData[awbMode] == 'off':
+	  camera.awb_gains = (1.0,1.0)
 	buttons[8][5].setBg('awb-' + awbData[awbMode])
 
 def saveSettings():
