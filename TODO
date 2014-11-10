@@ -1,0 +1,8 @@
+- AWB off shows black screen (wrong shutter speed)
+
+- if thumbnail does not exist, recreate      
+
+- add AWB setting to EXIF
+
+- fix 1920x1080 offset: no WYSIWYG
+

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # Point-and-shoot camera for Raspberry Pi w/camera and Adafruit PiTFT.
 # This must run as root (sudo python cam.py) due to framebuffer, etc.
 #
@@ -22,22 +24,43 @@
 # Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
 # BSD license, all text above must be included in any redistribution.
 
+# -------------------------------------------------------------------------------
+# Changes from the original version by Bernhard Bablok (mail a_t bablokb dot de)
+# Tested with picamera 1.8
+
+# new feature: added screen for setting AWB
+# new feature: add thumbnail to captured image and save to /home/pi/.cache
+# performance: display cached thumbnails instead of scaled down images
+# performance: keep list of images-numbers instead of testing existence
+#              of files with thousands of os-calls
+# change:      name images rpi_XXXX.jpg instead of IMG_XXXX.JPG
+#              (unix-tools usually expect lower case in filenames)
+# fix:         change owner of captured images to pi:pi
+# fix:         capture raw RGB directly, no need to scale result with C-code
+# fix:         removed buggy cropping code (camera.crop is deprecated)
+# fix:         added shebang (no need to call python explicitly to execute code)
+# fix:         start cam.py from any directory
+#              (in *nix, you should stay at HOME)
+# fix:         read and write cam.pkl in user's HOME-directory
+# -------------------------------------------------------------------------------
+
 import atexit
 import cPickle as pickle
 import errno
 import fnmatch
 import io
+import sys
 import os
 import os.path
+import pwd
 import picamera
+import pyexiv2
 import pygame
 import stat
 import threading
 import time
-import yuv2rgb
 from pygame.locals import *
 from subprocess import call  
-
 
 # UI classes ---------------------------------------------------------------
 
@@ -136,6 +159,10 @@ def isoCallback(n): # Pass 1 (next ISO) or -1 (prev ISO)
 	global isoMode
 	setIsoMode((isoMode + n) % len(isoData))
 
+def awbCallback(n): # Pass 1 (next AWB) or -1 (prev AWB)
+	global awbMode
+	setAwbMode((awbMode + n) % len(awbData))
+
 def settingCallback(n): # Pass 1 (next setting) or -1 (prev setting)
 	global screenMode
 	screenMode += n
@@ -151,18 +178,19 @@ def quitCallback(): # Quit confirmation button
 	raise SystemExit
 
 def viewCallback(n): # Viewfinder buttons
-	global loadIdx, scaled, screenMode, screenModePrior, settingMode, storeMode
+	global imgNums, loadIdx, scaled, screenMode, screenModePrior, settingMode, storeMode
 
 	if n is 0:   # Gear icon (settings)
 	  screenMode = settingMode # Switch to last settings mode
 	elif n is 1: # Play icon (image playback)
 	  if scaled: # Last photo is already memory-resident
-	    loadIdx         = saveIdx
+	    loadIdx         = len(imgNums)-1
 	    screenMode      =  0 # Image playback
 	    screenModePrior = -1 # Force screen refresh
 	  else:      # Load image
-	    r = imgRange(pathData[storeMode])
-	    if r: showImage(r[1]) # Show last image in directory
+            if len(imgNums):
+	      loadIdx = len(imgNums)-1
+	      showImage(loadIdx)
 	    else: screenMode = 2  # No images
 	else: # Rest of screen = shutter
 	  takePicture()
@@ -182,25 +210,46 @@ def imageCallback(n): # Pass 1 (next image), -1 (prev image) or 0 (delete)
 	  showNextImage(n)
 
 def deleteCallback(n): # Delete confirmation
-	global loadIdx, scaled, screenMode, storeMode
+	global loadIdx, imgNums, scaled, screenMode, storeMode
 	screenMode      =  0
 	screenModePrior = -1
 	if n is True:
-	  os.remove(pathData[storeMode] + '/IMG_' + '%04d' % loadIdx + '.JPG')
-	  if(imgRange(pathData[storeMode])):
+	  os.remove(pathData[storeMode] +
+		    '/rpi_' + '%04d' % imgNums[loadIdx] + '.jpg')
+	  os.remove(cacheDir + '/rpi_' + '%04d' % imgNums[loadIdx] + '.jpg')
+	  del imgNums[loadIdx]
+	  if len(imgNums):
 	    screen.fill(0)
 	    pygame.display.update()
-	    showNextImage(-1)
+	    showNextImage(-1 if loadIdx==len(imgNums) else 0)
 	  else: # Last image deleteted; go to 'no images' mode
 	    screenMode = 2
 	    scaled     = None
 	    loadIdx    = -1
 
 def storeModeCallback(n): # Radio buttons on storage settings screen
-	global storeMode
+	global pathData, storeMode
 	buttons[4][storeMode + 3].setBg('radio3-0')
 	storeMode = n
 	buttons[4][storeMode + 3].setBg('radio3-1')
+
+        #create directory if it does not exist
+	if not os.path.isdir(pathData[storeMode]):
+	  try:
+	    os.makedirs(pathData[storeMode])
+	    # Set new directory ownership to pi user, mode to 755
+	    os.chown(pathData[storeMode], uid, gid)
+	    os.chmod(pathData[storeMode],
+	      stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
+	      stat.S_IRGRP | stat.S_IXGRP |
+	      stat.S_IROTH | stat.S_IXOTH)
+	  except OSError as e:
+	    # errno = 2 if can't create folder
+	    print errno.errorcode[e.errno]
+	    raise SystemExit
+    
+        # read all existing image numbers
+	readImgNumsList(storeMode)
 
 def sizeModeCallback(n): # Radio buttons on size settings screen
 	global sizeMode
@@ -208,7 +257,6 @@ def sizeModeCallback(n): # Radio buttons on size settings screen
 	sizeMode = n
 	buttons[5][sizeMode + 3].setBg('radio3-1')
 	camera.resolution = sizeData[sizeMode][1]
-#	camera.crop       = sizeData[sizeMode][2]
 
 
 # Global stuff -------------------------------------------------------------
@@ -220,11 +268,15 @@ storeMode       =  0      # Storage mode; default = Photos folder
 storeModePrior  = -1      # Prior storage mode (for detecting changes)
 sizeMode        =  0      # Image size; default = Large
 fxMode          =  0      # Image effect; default = Normal
-isoMode         =  0      # ISO settingl default = Auto
+isoMode         =  0      # ISO setting; default = Auto
+awbMode         =  0      # AWB setting; default = auto
 iconPath        = 'icons' # Subdirectory containing UI bitmaps (PNG format)
-saveIdx         = -1      # Image index for saving (-1 = none set yet)
 loadIdx         = -1      # Image index for loading
 scaled          = None    # pygame Surface w/last-loaded image
+
+# list of existing image numbers. Read by storeModeCallback using
+# readImgNumsList
+imgNums = []
 
 # To use Dropbox uploader, must have previously run the dropbox_uploader.sh
 # script to set up the app key and such.  If this was done as the normal pi
@@ -235,14 +287,20 @@ uploader        = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
 upconfig        = '/home/pi/.dropbox_uploader'
 
 sizeData = [ # Camera parameters for different size settings
- # Full res      Viewfinder  Crop window
- [(2592, 1944), (320, 240), (0.0   , 0.0   , 1.0   , 1.0   )], # Large
- [(1920, 1080), (320, 180), (0.1296, 0.2222, 0.7408, 0.5556)], # Med
- [(1440, 1080), (320, 240), (0.2222, 0.2222, 0.5556, 0.5556)]] # Small
+ # Full res      Viewfinder
+ [(2592, 1944), (320, 240)], # Large
+ [(1920, 1080), (320, 180)], # Med
+ [(1440, 1080), (320, 240)]] # Small
 
 isoData = [ # Values for ISO settings [ISO value, indicator X position]
  [  0,  27], [100,  64], [200,  97], [320, 137],
  [400, 164], [500, 197], [640, 244], [800, 297]]
+
+# Setting for auto white balance. A fixed list is used because
+# we have pre-generated icons.
+awbData = [ 'auto', 'off', 'sunlight',
+  'cloudy', 'shade', 'tungsten', 'fluorescent', 'incandescent',
+  'flash', 'horizon' ]
 
 # A fixed list of image effects is used (rather than polling
 # camera.IMAGE_EFFECTS) because the latter contains a few elements
@@ -255,6 +313,9 @@ fxData = [
   'none', 'sketch', 'gpen', 'pastel', 'watercolor', 'oilpaint', 'hatch',
   'negative', 'colorswap', 'posterise', 'denoise', 'blur', 'film',
   'washedout', 'emboss', 'cartoon', 'solarize' ]
+
+# cache directory for thumbnails
+cacheDir = '/home/pi/.cache/picam'
 
 pathData = [
   '/home/pi/Photos',     # Path for storeMode = 0 (Photos folder)
@@ -345,7 +406,16 @@ buttons = [
    Button(( 17,157, 21, 19), bg='iso-arrow'),
    Button((  0, 10,320, 29), bg='iso')],
 
-  # Screen mode 8 is quit confirmation
+  # Screen mode 8 is auto white balance (awb)
+  [Button((  0,188,320, 52), bg='done', cb=doneCallback),
+   Button((  0,  0, 80, 52), bg='prev', cb=settingCallback, value=-1),
+   Button((240,  0, 80, 52), bg='next', cb=settingCallback, value= 1),
+   Button((  0, 70, 80, 52), bg='prev', cb=awbCallback     , value=-1),
+   Button((240, 70, 80, 52), bg='next', cb=awbCallback     , value= 1),
+   Button((  0, 67,320, 91), bg='awb-auto'),
+   Button((  0, 11,320, 29), bg='awb')],
+
+  # Screen mode 9 is quit confirmation
   [Button((  0,188,320, 52), bg='done'   , cb=doneCallback),
    Button((  0,  0, 80, 52), bg='prev'   , cb=settingCallback, value=-1),
    Button((240,  0, 80, 52), bg='next'   , cb=settingCallback, value= 1),
@@ -370,13 +440,20 @@ def setIsoMode(n):
 	buttons[7][7].rect = ((isoData[isoMode][1] - 10,) +
 	  buttons[7][7].rect[1:])
 
+def setAwbMode(n):
+	global awbMode
+	awbMode = n
+	camera.awb_mode = awbData[awbMode]
+	buttons[8][5].setBg('awb-' + awbData[awbMode])
+
 def saveSettings():
 	try:
-	  outfile = open('cam.pkl', 'wb')
+	  outfile = open(os.path.expanduser('~')+'/cam.pkl', 'wb')
 	  # Use a dictionary (rather than pickling 'raw' values) so
 	  # the number & order of things can change without breaking.
 	  d = { 'fx'    : fxMode,
 	        'iso'   : isoMode,
+		'awb'   : awbMode,
 	        'size'  : sizeMode,
 	        'store' : storeMode }
 	  pickle.dump(d, outfile)
@@ -386,30 +463,26 @@ def saveSettings():
 
 def loadSettings():
 	try:
-	  infile = open('cam.pkl', 'rb')
+	  infile = open(os.path.expanduser('~')+'/cam.pkl', 'rb')
 	  d      = pickle.load(infile)
 	  infile.close()
 	  if 'fx'    in d: setFxMode(   d['fx'])
 	  if 'iso'   in d: setIsoMode(  d['iso'])
+	  if 'awb'   in d: setAwbMode(  d['awb'])
 	  if 'size'  in d: sizeModeCallback( d['size'])
 	  if 'store' in d: storeModeCallback(d['store'])
 	except:
-	  pass
+	  storeModeCallback(storeMode)
 
-# Scan files in a directory, locating JPEGs with names matching the
-# software's convention (IMG_XXXX.JPG), returning a tuple with the
-# lowest and highest indices (or None if no matching files).
-def imgRange(path):
-	min = 9999
-	max = 0
-	try:
-	  for file in os.listdir(path):
-	    if fnmatch.fnmatch(file, 'IMG_[0-9][0-9][0-9][0-9].JPG'):
-	      i = int(file[4:8])
-	      if(i < min): min = i
-	      if(i > max): max = i
-	finally:
-	  return None if min > max else (min, max)
+# Read existing numbers into imgNums. Triggerd by a change of
+# storeMode.
+def readImgNumsList(n):
+	global pathData, imgNums
+	imgNums = []
+	for file in os.listdir(pathData[n]):
+	  if fnmatch.fnmatch(file,'rpi_[0-9][0-9][0-9][0-9].jpg'):
+	    imgNums.append(int(file[4:8]))
+	imgNums.sort()
 
 # Busy indicator.  To use, run in separate thread, set global 'busy'
 # to False when done.
@@ -433,56 +506,37 @@ def spinner():
 	buttons[screenMode][4].setBg(None)
 	screenModePrior = -1 # Force refresh
 
+def saveThumbnail(fname,tname):      # fname: filename with extension
+	metadata = pyexiv2.ImageMetadata(fname)
+	metadata.read()
+	thumb = metadata.exif_thumbnail
+	thumb.write_to_file(tname)   # tname: thumbname without extension
+	os.chown(tname+".jpg", uid, gid)
+	os.chmod(tname+".jpg",
+	    stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+	
 def takePicture():
-	global busy, gid, loadIdx, saveIdx, scaled, sizeMode, storeMode, storeModePrior, uid
+	global busy, gid, loadIdx, scaled, sizeMode, storeMode, storeModePrior, uid, cacheDir, imgNums
 
-	if not os.path.isdir(pathData[storeMode]):
-	  try:
-	    os.makedirs(pathData[storeMode])
-	    # Set new directory ownership to pi user, mode to 755
-	    os.chown(pathData[storeMode], uid, gid)
-	    os.chmod(pathData[storeMode],
-	      stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
-	      stat.S_IRGRP | stat.S_IXGRP |
-	      stat.S_IROTH | stat.S_IXOTH)
-	  except OSError as e:
-	    # errno = 2 if can't create folder
-	    print errno.errorcode[e.errno]
-	    return
-
-	# If this is the first time accessing this directory,
-	# scan for the max image index, start at next pos.
-	if storeMode != storeModePrior:
-	  r = imgRange(pathData[storeMode])
-	  if r is None:
-	    saveIdx = 1
-	  else:
-	    saveIdx = r[1] + 1
-	    if saveIdx > 9999: saveIdx = 0
-	  storeModePrior = storeMode
-
-	# Scan for next available image slot
-	while True:
-	  filename = pathData[storeMode] + '/IMG_' + '%04d' % saveIdx + '.JPG'
-	  if not os.path.isfile(filename): break
-	  saveIdx += 1
-	  if saveIdx > 9999: saveIdx = 0
+	saveNum = imgNums[-1] + 1 % 10000 if len(imgNums) else 0
+	filename = pathData[storeMode] + '/rpi_' + '%04d' % saveNum + '.jpg'
+	cachename = cacheDir+'/rpi_' + '%04d' % saveNum
 
 	t = threading.Thread(target=spinner)
 	t.start()
 
 	scaled = None
 	camera.resolution = sizeData[sizeMode][0]
-	camera.crop       = sizeData[sizeMode][2]
 	try:
 	  camera.capture(filename, use_video_port=False, format='jpeg',
-	    thumbnail=None)
+	    thumbnail=(340,240,60))
+	  imgNums.append(saveNum)
 	  # Set image file ownership to pi user, mode to 644
-	  # os.chown(filename, uid, gid) # Not working, why?
+	  os.chown(filename, uid, gid)
 	  os.chmod(filename,
 	    stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-	  img    = pygame.image.load(filename)
-	  scaled = pygame.transform.scale(img, sizeData[sizeMode][1])
+	  saveThumbnail(filename,cachename)
+	  scaled  = pygame.image.load(cachename+'.jpg')
 	  if storeMode == 2: # Dropbox
 	    if upconfig:
 	      cmd = uploader + ' -f ' + upconfig + ' upload ' + filename + ' Photos/' + os.path.basename(filename)
@@ -493,7 +547,6 @@ def takePicture():
 	finally:
 	  # Add error handling/indicator (disk full, etc.)
 	  camera.resolution = sizeData[sizeMode][1]
-	  camera.crop       = (0.0, 0.0, 1.0, 1.0)
 
 	busy = False
 	t.join()
@@ -506,36 +559,26 @@ def takePicture():
 	     (240 - scaled.get_height()) / 2))
 	  pygame.display.update()
 	  time.sleep(2.5)
-	  loadIdx = saveIdx
+	  loadIdx = len(imgNums)-1
 
 def showNextImage(direction):
-	global busy, loadIdx
-
-	t = threading.Thread(target=spinner)
-	t.start()
-
-	n = loadIdx
-	while True:
-	  n += direction
-	  if(n > 9999): n = 0
-	  elif(n < 0):  n = 9999
-	  if os.path.exists(pathData[storeMode]+'/IMG_'+'%04d'%n+'.JPG'):
-	    showImage(n)
-	    break
-
-	busy = False
-	t.join()
+	global busy, loadIdx, imgNums
+	
+	loadIdx += direction
+	if loadIdx == len(imgNums):  # past end of list, continue at beginning
+	  loadIdx = 0
+        elif loadIdx == -1:            # before start of list, continue with end of list
+	  loadIdx = len(imgNums)-1
+	showImage(loadIdx)
 
 def showImage(n):
-	global busy, loadIdx, scaled, screenMode, screenModePrior, sizeMode, storeMode
+	global busy, imgNums, loadIdx, scaled, screenMode, screenModePrior, sizeMode, storeMode
 
 	t = threading.Thread(target=spinner)
 	t.start()
 
-	img      = pygame.image.load(
-	            pathData[storeMode] + '/IMG_' + '%04d' % n + '.JPG')
-	scaled   = pygame.transform.scale(img, sizeData[sizeMode][1])
-	loadIdx  = n
+	scaled   = pygame.image.load(
+	            cacheDir + '/rpi_' + '%04d' % imgNums[n] + '.jpg')
 
 	busy = False
 	t.join()
@@ -546,22 +589,23 @@ def showImage(n):
 
 # Initialization -----------------------------------------------------------
 
+# fix iconPath: it's relative to the executable
+thisDir,thisFile = os.path.split(sys.argv[0])
+iconPath = thisDir + os.path.sep + iconPath
+
 # Init framebuffer/touchscreen environment variables
 os.putenv('SDL_VIDEODRIVER', 'fbcon')
 os.putenv('SDL_FBDEV'      , '/dev/fb1')
 os.putenv('SDL_MOUSEDRV'   , 'TSLIB')
 os.putenv('SDL_MOUSEDEV'   , '/dev/input/touchscreen')
 
-# Get user & group IDs for file & folder creation
-# (Want these to be 'pi' or other user, not root)
-s = os.getenv("SUDO_UID")
-uid = int(s) if s else os.getuid()
-s = os.getenv("SUDO_GID")
-gid = int(s) if s else os.getgid()
+# running as root from /etc/rc.local and not under sudo control, so
+# query ids directly
+uid = pwd.getpwnam("pi").pw_uid
+gid = pwd.getpwnam("pi").pw_gid
 
 # Buffers for viewfinder data
 rgb = bytearray(320 * 240 * 3)
-yuv = bytearray(320 * 240 * 3 / 2)
 
 # Init pygame and screen
 pygame.init()
@@ -572,9 +616,6 @@ screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 camera            = picamera.PiCamera()
 atexit.register(camera.close)
 camera.resolution = sizeData[sizeMode][1]
-#camera.crop       = sizeData[sizeMode][2]
-camera.crop       = (0.0, 0.0, 1.0, 1.0)
-# Leave raw format at default YUV, don't touch, don't set to RGB!
 
 # Load all icons at startup.
 for file in os.listdir(iconPath):
@@ -592,8 +633,22 @@ for s in buttons:        # For each screenful of buttons...
         b.iconFg = i
         b.fg     = None
 
-loadSettings() # Must come last; fiddles with Button/Icon states
+# one-time initialization of cache-directory
+if not os.path.isdir(cacheDir):
+  try:
+    os.makedirs(cacheDir)
+    # Set new directory ownership to pi user, mode to 755
+    os.chown(cacheDir, uid, gid)
+    os.chmod(cacheDir,
+      stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
+      stat.S_IRGRP | stat.S_IXGRP |
+      stat.S_IROTH | stat.S_IXOTH)
+  except OSError as e:
+    # errno = 2 if can't create folder
+    print errno.errorcode[e.errno]
+    raise SystemExit
 
+loadSettings() # Must come last; fiddles with Button/Icon states
 
 # Main loop ----------------------------------------------------------------
 
@@ -615,12 +670,10 @@ while(True):
   # Refresh display
   if screenMode >= 3: # Viewfinder or settings modes
     stream = io.BytesIO() # Capture into in-memory stream
-    camera.capture(stream, use_video_port=True, format='raw')
+    camera.capture(stream, resize=sizeData[sizeMode][1],use_video_port=True, format='rgb')
     stream.seek(0)
-    stream.readinto(yuv)  # stream -> YUV buffer
+    stream.readinto(rgb)
     stream.close()
-    yuv2rgb.convert(yuv, rgb, sizeData[sizeMode][1][0],
-      sizeData[sizeMode][1][1])
     img = pygame.image.frombuffer(rgb[0:
       (sizeData[sizeMode][1][0] * sizeData[sizeMode][1][1] * 3)],
       sizeData[sizeMode][1], 'RGB')
