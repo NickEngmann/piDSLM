@@ -42,6 +42,7 @@
 # fix:         start cam.py from any directory
 #              (in *nix, you should stay at HOME)
 # fix:         read and write cam.pkl in user's HOME-directory
+# new feature: set EXIF-tag 'WhiteBalance' to auto or manual
 # -------------------------------------------------------------------------------
 
 import atexit
@@ -441,12 +442,17 @@ def setIsoMode(n):
 	  buttons[7][7].rect[1:])
 
 def setAwbMode(n):
-	global awbMode
-	awbMode = n
-	camera.awb_mode = awbData[awbMode]
-	if awbData[awbMode] == 'off':
-	  camera.awb_gains = (1.0,1.0)
-	buttons[8][5].setBg('awb-' + awbData[awbMode])
+  global awbMode
+  awbMode = n
+  buttons[8][5].setBg('awb-' + awbData[awbMode])
+  camera.awb_mode = awbData[awbMode]
+  if awbData[awbMode] == 'off':
+    camera.awb_gains = (1.0,1.0)    # needed because of ignorant engineers
+  # record white-balance in exif. Too bad exif-tags only allow auto/manual.
+  if awbData[awbMode] == 'auto':
+    camera.exif_tags['EXIF.WhiteBalance'] = '0'
+  else:
+    camera.exif_tags['EXIF.WhiteBalance'] = '1'
 
 def saveSettings():
 	try:
