@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Version: 2 (see ChangeLog.md for a list of changes)
+
+# -------------------------------------------------------------------------------
+# Header from original version: 
+
 # Point-and-shoot camera for Raspberry Pi w/camera and Adafruit PiTFT.
 # This must run as root (sudo python cam.py) due to framebuffer, etc.
 #
@@ -23,26 +28,11 @@
 #
 # Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
 # BSD license, all text above must be included in any redistribution.
+# -------------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------------
 # Changes from the original version by Bernhard Bablok (mail a_t bablokb dot de)
-# Tested with picamera 1.8
-
-# new feature: added screen for setting AWB
-# new feature: add thumbnail to captured image and save to /home/pi/.cache
-# performance: display cached thumbnails instead of scaled down images
-# performance: keep list of images-numbers instead of testing existence
-#              of files with thousands of os-calls
-# change:      name images rpi_XXXX.jpg instead of IMG_XXXX.JPG
-#              (unix-tools usually expect lower case in filenames)
-# fix:         change owner of captured images to pi:pi
-# fix:         capture raw RGB directly, no need to scale result with C-code
-# fix:         removed buggy cropping code (camera.crop is deprecated)
-# fix:         added shebang (no need to call python explicitly to execute code)
-# fix:         start cam.py from any directory
-#              (in *nix, you should stay at HOME)
-# fix:         read and write cam.pkl in user's HOME-directory
-# new feature: set EXIF-tag 'WhiteBalance' to auto or manual
+# Tested with picamera 1.8.
 # -------------------------------------------------------------------------------
 
 import atexit
