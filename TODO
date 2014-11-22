@@ -1,4 +1,16 @@
-- if thumbnail does not exist, recreate      
+- add program version with change-log
+
+- after load, make 'Exit' first settings screen for quick shutdown
+
+- rework UI
+  * add toggle button to unclutter screen
+  * add direct access-buttons for ISO, WB, (quality)
+  * add buttons for exposure-compensation
+
+- add features
+  * exposure compensation
+  * exposure (auto, shutter-speed)
+  * quality: jpg, raw+jpg
 
 - fix 1920x1080 offset: no WYSIWYG
 

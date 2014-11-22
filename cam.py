@@ -575,18 +575,24 @@ def showNextImage(direction):
 	loadIdx += direction
 	if loadIdx == len(imgNums):  # past end of list, continue at beginning
 	  loadIdx = 0
-        elif loadIdx == -1:            # before start of list, continue with end of list
+        elif loadIdx == -1:       # before start of list, continue with end of list
 	  loadIdx = len(imgNums)-1
 	showImage(loadIdx)
 
 def showImage(n):
-	global busy, imgNums, loadIdx, scaled, screenMode, screenModePrior, sizeMode, storeMode
+	global busy, imgNums, scaled, screenMode, screenModePrior, storeMode, pathData
 
 	t = threading.Thread(target=spinner)
 	t.start()
 
-	scaled   = pygame.image.load(
-	            cacheDir + '/rpi_' + '%04d' % imgNums[n] + '.jpg')
+	cachefile = cacheDir + '/rpi_' + '%04d' % imgNums[n] + '.jpg'
+
+	# if cachefile does not exist, recreate it
+	if not os.path.exists(cachefile):
+	  filename = pathData[storeMode] + '/rpi_' + '%04d' % imgNums[n] + '.jpg'
+	  saveThumbnail(filename,cacheDir + '/rpi_' + '%04d' % imgNums[n])
+	  
+	scaled   = pygame.image.load(cachefile)
 
 	busy = False
 	t.join()
