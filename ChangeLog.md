@@ -1,6 +1,14 @@
 Changes to adafruit-pi-cam
 ==========================
 
+Version 2.1 (Direct Quit)
+-------------------------
+
+- **new feature**: after boot, the first setting screen is the
+                   quit confirmation page. This allows faster shutdown.
+- **internal**:    code changes for future enhancements
+
+
 Version 2 (major rework)
 ------------------------
 
@@ -22,6 +30,7 @@ version 1.8). It additionally needs the package python-pyexiv2.
                    (in *nix, you should stay at HOME)
 - **fix**:         read and write cam.pkl in user's HOME-directory
 - **new feature**: set EXIF-tag 'WhiteBalance' to auto or manual
+
 
 Version 1 (original Adafruit release)
 -------------------------------------

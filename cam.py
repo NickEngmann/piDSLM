@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Version: 2 (see ChangeLog.md for a list of changes)
+# Version: 2.1 (see ChangeLog.md for a list of changes)
 
 # -------------------------------------------------------------------------------
 # Header from original version: 
@@ -254,7 +254,7 @@ def sizeModeCallback(n): # Radio buttons on size settings screen
 
 screenMode      =  3      # Current screen mode; default = viewfinder
 screenModePrior = -1      # Prior screen mode (for detecting changes)
-settingMode     =  4      # Last-used settings mode (default = storage)
+settingMode     =  9      # Last-used settings mode (default = quit)
 storeMode       =  0      # Storage mode; default = Photos folder
 storeModePrior  = -1      # Prior storage mode (for detecting changes)
 sizeMode        =  0      # Image size; default = Large
