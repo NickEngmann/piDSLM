@@ -185,12 +185,12 @@ def quitCallback(): # Quit confirmation button
   raise SystemExit
 
 def viewCallback(n): # Viewfinder buttons
-  global imgNums, loadIdx, scaled, screenMode, screenModePrior, settingMode, storeMode
+  global imgNums, loadIdx, imgSurface, screenMode, screenModePrior, settingMode, storeMode
 
   if n is 0:   # Gear icon (settings)
     screenMode = settingMode # Switch to last settings mode
   elif n is 1: # Play icon (image playback)
-    if scaled: # Last photo is already memory-resident
+    if imgSurface: # Last photo is already memory-resident
       loadIdx         = len(imgNums)-1
       screenMode      =  Mode.PLAYBACK
       screenModePrior =  Mode.UNDEFINED
@@ -217,7 +217,7 @@ def imageCallback(n): # Pass 1 (next image), -1 (prev image) or 0 (delete)
     showNextImage(n)
 
 def deleteCallback(n): # Delete confirmation
-  global loadIdx, imgNums, scaled, screenMode, storeMode
+  global loadIdx, imgNums, imgSurface, screenMode, storeMode
   screenMode      = Mode.PLAYBACK
   screenModePrior = Mode.UNDEFINED
   if n is True:
@@ -231,7 +231,7 @@ def deleteCallback(n): # Delete confirmation
       showNextImage(-1 if loadIdx==len(imgNums) else 0)
     else: # Last image deleteted; go to 'no images' mode
       screenMode = Mode.NO_IMAGES
-      scaled     = None
+      imgSurface = None
       loadIdx    = -1
 
 def storeModeCallback(n): # Radio buttons on storage settings screen
@@ -277,9 +277,9 @@ sizeMode        =  0                # Image size; default = Large
 fxMode          =  0                # Image effect; default = Normal
 isoMode         =  0                # ISO setting; default = Auto
 awbMode         =  0                # AWB setting; default = auto
-iconPath        = 'icons'       # Subdirectory containing UI bitmaps (PNG format)
-loadIdx         = -1            # Image index for loading
-scaled          = None          # pygame Surface w/last-loaded image
+iconPath        = 'icons'           # Subdir containing UI bitmaps (PNG format)
+loadIdx         = -1                # Image index for loading
+imgSurface      = None              # pygame Surface w/last-loaded image
 
 # list of existing image numbers. Read by storeModeCallback using
 # readImgNumsList
@@ -525,7 +525,7 @@ def saveThumbnail(fname,tname):      # fname: filename with extension
       stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
 
 def takePicture():
-  global busy, gid, loadIdx, scaled, sizeMode, storeMode, storeModePrior, uid, cacheDir, imgNums
+  global busy, gid, loadIdx, imgSurface, sizeMode, storeMode, storeModePrior, uid, cacheDir, imgNums
 
   saveNum = imgNums[-1] + 1 % 10000 if len(imgNums) else 0
   filename = pathData[storeMode] + '/rpi_' + '%04d' % saveNum + '.jpg'
@@ -534,7 +534,7 @@ def takePicture():
   t = threading.Thread(target=spinner)
   t.start()
 
-  scaled = None
+  imgSurface = None
   camera.resolution = sizeData[sizeMode][0]
   try:
     camera.capture(filename, use_video_port=False, format='jpeg',
@@ -545,7 +545,7 @@ def takePicture():
     os.chmod(filename,
       stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
     saveThumbnail(filename,cachename)
-    scaled  = pygame.image.load(cachename+'.jpg')
+    imgSurface  = pygame.image.load(cachename+'.jpg')
     if storeMode == 2: # Dropbox
       if upconfig:
 	cmd = uploader + ' -f ' + upconfig + ' upload ' + filename + ' Photos/' + os.path.basename(filename)
@@ -560,12 +560,12 @@ def takePicture():
   busy = False
   t.join()
 
-  if scaled:
-    if scaled.get_height() < 240: # Letterbox
+  if imgSurface:
+    if imgSurface.get_height() < 240: # Letterbox
       screen.fill(0)
-    screen.blit(scaled,
-      ((320 - scaled.get_width() ) / 2,
-       (240 - scaled.get_height()) / 2))
+    screen.blit(imgSurface,
+      ((320 - imgSurface.get_width() ) / 2,
+       (240 - imgSurface.get_height()) / 2))
     pygame.display.update()
     time.sleep(2.5)
     loadIdx = len(imgNums)-1
@@ -581,7 +581,7 @@ def showNextImage(direction):
   showImage(loadIdx)
 
 def showImage(n):
-  global busy, imgNums, scaled, screenMode, screenModePrior, storeMode, pathData
+  global busy, imgNums, imgSurface, screenMode, screenModePrior, storeMode, pathData
 
   t = threading.Thread(target=spinner)
   t.start()
@@ -593,7 +593,7 @@ def showImage(n):
     filename = pathData[storeMode] + '/rpi_' + '%04d' % imgNums[n] + '.jpg'
     saveThumbnail(filename,cacheDir + '/rpi_' + '%04d' % imgNums[n])
 
-  scaled   = pygame.image.load(cachefile)
+  imgSurface   = pygame.image.load(cachefile)
 
   busy = False
   t.join()
@@ -694,7 +694,7 @@ while(True):
       (sizeData[sizeMode][1][0] * sizeData[sizeMode][1][1] * 3)],
       sizeData[sizeMode][1], 'RGB')
   elif screenMode in [Mode.PLAYBACK, Mode.DELETE]:
-    img = scaled       # Show last-loaded image
+    img = imgSurface   # Show last-loaded image
   else:                # 'No Photos' mode
     img = None         # You get nothing, good day sir
 
