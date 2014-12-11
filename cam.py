@@ -66,7 +66,8 @@ class Mode:
   EFFECT     = 6
   ISO        = 7
   AWB        = 8
-  QUIT       = 9
+  QUALITY    = 9
+  QUIT       = 10
   LAST       = QUIT    # LAST must be equal to the highest mode
 
 # UI classes ---------------------------------------------------------------
@@ -236,9 +237,9 @@ def deleteCallback(n): # Delete confirmation
 
 def storeModeCallback(n): # Radio buttons on storage settings screen
   global pathData, storeMode
-  buttons[4][storeMode + 3].setBg('radio3-0')
+  buttons[Mode.STORAGE][storeMode + 3].setBg('radio3-0')
   storeMode = n
-  buttons[4][storeMode + 3].setBg('radio3-1')
+  buttons[Mode.STORAGE][storeMode + 3].setBg('radio3-1')
 
   #create directory if it does not exist
   if not os.path.isdir(pathData[storeMode]):
@@ -260,10 +261,16 @@ def storeModeCallback(n): # Radio buttons on storage settings screen
 
 def sizeModeCallback(n): # Radio buttons on size settings screen
   global sizeMode
-  buttons[5][sizeMode + 3].setBg('radio3-0')
+  buttons[Mode.SIZE][sizeMode + 3].setBg('radio3-0')
   sizeMode = n
-  buttons[5][sizeMode + 3].setBg('radio3-1')
+  buttons[Mode.SIZE][sizeMode + 3].setBg('radio3-1')
   camera.resolution = sizeData[sizeMode][1]
+
+def qualityModeCallback(n): # Radio buttons on quality settings screen
+  global qualityMode
+  buttons[Mode.QUALITY][3+qualityMode].setBg('radio3-0')
+  qualityMode = n
+  buttons[Mode.QUALITY][3+qualityMode].setBg('radio3-1')
 
 
 # Global stuff -------------------------------------------------------------
@@ -277,6 +284,7 @@ sizeMode        =  0                # Image size; default = Large
 fxMode          =  0                # Image effect; default = Normal
 isoMode         =  0                # ISO setting; default = Auto
 awbMode         =  0                # AWB setting; default = auto
+qualityMode     =  0                # Quality setting: default = jpg
 iconPath        = 'icons'           # Subdir containing UI bitmaps (PNG format)
 loadIdx         = -1                # Image index for loading
 imgSurface      = None              # pygame Surface w/last-loaded image
@@ -419,6 +427,16 @@ buttons[Mode.AWB] = [
   Button((  0, 67,320, 91), bg='awb-auto'),
   Button((  0, 11,320, 29), bg='awb')]
 
+buttons[Mode.QUALITY] = [
+  Button((  0,188,320, 52), bg='done', cb=doneCallback),
+  Button((  0,  0, 80, 52), bg='prev', cb=settingCallback, value=-1),
+  Button((240,  0, 80, 52), bg='next', cb=settingCallback, value= 1),
+  Button(( 32, 60,100,120), bg='radio3-1', fg='quality-jpg',
+    cb=qualityModeCallback, value=0),
+  Button((188, 60,100,120), bg='radio3-0', fg='quality-jpg+raw',
+    cb=qualityModeCallback, value=1),
+  Button((  0, 10,320, 35), bg='quality')]
+
 buttons[Mode.QUIT] = [
   Button((  0,188,320, 52), bg='done'   , cb=doneCallback),
   Button((  0,  0, 80, 52), bg='prev'   , cb=settingCallback, value=-1),
@@ -460,11 +478,12 @@ def saveSettings():
     outfile = open(os.path.expanduser('~')+'/cam.pkl', 'wb')
     # Use a dictionary (rather than pickling 'raw' values) so
     # the number & order of things can change without breaking.
-    d = { 'fx'    : fxMode,
-	  'iso'   : isoMode,
-	  'awb'   : awbMode,
-	  'size'  : sizeMode,
-	  'store' : storeMode }
+    d = { 'fx'      : fxMode,
+	  'iso'     : isoMode,
+	  'awb'     : awbMode,
+	  'quality' : qualityMode,
+	  'size'    : sizeMode,
+	  'store'   : storeMode }
     pickle.dump(d, outfile)
     outfile.close()
   except:
@@ -475,11 +494,12 @@ def loadSettings():
     infile = open(os.path.expanduser('~')+'/cam.pkl', 'rb')
     d      = pickle.load(infile)
     infile.close()
-    if 'fx'    in d: setFxMode(   d['fx'])
-    if 'iso'   in d: setIsoMode(  d['iso'])
-    if 'awb'   in d: setAwbMode(  d['awb'])
-    if 'size'  in d: sizeModeCallback( d['size'])
-    if 'store' in d: storeModeCallback(d['store'])
+    if 'fx'      in d: setFxMode(   d['fx'])
+    if 'iso'     in d: setIsoMode(  d['iso'])
+    if 'awb'     in d: setAwbMode(  d['awb'])
+    if 'quality' in d: qualityModeCallback(d['quality'])
+    if 'size'    in d: sizeModeCallback( d['size'])
+    if 'store'   in d: storeModeCallback(d['store'])
   except:
     storeModeCallback(storeMode)
 
@@ -538,7 +558,7 @@ def takePicture():
   camera.resolution = sizeData[sizeMode][0]
   try:
     camera.capture(filename, use_video_port=False, format='jpeg',
-      thumbnail=(340,240,60))
+      thumbnail=(340,240,60),bayer=qualityMode==1)
     imgNums.append(saveNum)
     # Set image file ownership to pi user, mode to 644
     os.chown(filename, uid, gid)
