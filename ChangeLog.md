@@ -1,6 +1,18 @@
 Changes to adafruit-pi-cam
 ==========================
 
+Version 2.2 (Quality)
+---------------------
+
+- **new feature**: added settings page and logic for image quality.
+                   The program now supports jpg and jpg+raw. Note that
+                   for jpg+raw the raw bayer-data is append to the
+                   generated jpg and the file size increases by about 6MB.
+                   To process the file, you have to convert it first
+                   to dng with [raspi_dng](https://github.com/bablokb/raspiraw).
+                   Once in DNG-format, you can use the rawprocessor
+                   of your choice (Rawtherapee works fine).
+
 Version 2.1 (Direct Quit)
 -------------------------
 
