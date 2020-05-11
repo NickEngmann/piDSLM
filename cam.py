@@ -644,8 +644,9 @@ rgb = bytearray(320 * 240 * 3)
 
 # Init pygame and screen
 pygame.init()
-pygame.mouse.set_visible(False)
 screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+
+pygame.mouse.set_visible(False)
 
 # Init camera and set up default values
 camera            = picamera.PiCamera()
