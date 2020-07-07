@@ -1,0 +1,4 @@
+Pillow
+guizero
+dropbox
+guizero[images]
