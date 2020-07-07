@@ -1,6 +1,7 @@
-from guizero import App, PushButton, Text, Window
+from guizero import App, PushButton, Text, Picture, Window
 from time import sleep
 import time
+import glob
 import datetime
 import sys, os
 import subprocess
@@ -36,6 +37,9 @@ def timestamp():
 global capture_number
 capture_number = timestamp()
 video_capture_number = timestamp()
+picture_index = 0
+saved_pictures = [] 
+shown_picture = "" 
 
 def burst():
 
@@ -90,8 +94,29 @@ def takePicture(channel):
     os.system("raspistill -f -rot 90 -t 3000 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
     print("Raspistill done")
 
+def picture_left():
+    global picture_index 
+    picture_index += 1
+    global shown_picture
+    shown_picture = saved_pictures[picture_index]
+    picture_gallery = Picture(gallery, width=300, height=200, image=shown_picture, grid=[1,0])
+
+def picture_right():
+    global picture_index
+    picture_index += 1
+    global shown_picture
+    shown_picture = saved_pictures[picture_index]
+    picture_gallery = Picture(gallery, width=300, height=200, image=shown_picture, grid=[1,0])
+
 def show_gallery():
-    gallery = Window(app, bg="red",  height=300, width=450, title="busy")
+    gallery = Window(app, bg="white", height=300, width=450, layout="grid",title="Gallery")
+    global saved_pictures 
+    saved_pictures = glob.glob('/home/pi/Downloads/*.jpg')
+    global shown_picture 
+    shown_picture = saved_pictures[picture_index] 
+    button_left = PushButton(gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/left.png", command=picture_left)    
+    picture_gallery = Picture(gallery, width=300, height=200, image=shown_picture, grid=[1,0]) 
+    button_right = PushButton(gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/right.png", command=picture_right) 
     gallery.show()
 
 def video_capture():
