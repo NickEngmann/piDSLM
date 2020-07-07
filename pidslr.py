@@ -97,10 +97,6 @@ class piDSLR:
         print("done")
         self.hide_busy()
     
-#def split_slo_1h():
-
-#def long_exp():
-   
     def lapse(self):
         self.show_busy()
         capture_number = self.timestamp()
@@ -127,25 +123,29 @@ class piDSLR:
         print ("Button event callback")
         capture_number = self.timestamp()
         print("Raspistill starts")
-        os.system("raspistill -f -rot 90 -t 3000 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
+        os.system("raspistill -f -rot 90 -t 2500 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
         print("Raspistill done")
 
     def picture_left(self):
-        self.picture_index += 1
+        if (self.picture_index == 0):
+            self.pictures = (len(self.saved_pictures) - 1)    
+        self.picture_index -= 1
         self.shown_picture = self.saved_pictures[self.picture_index]
-        # self.picture_gallery = Picture(self.gallery, width=300, height=200, image=self.shown_picture, grid=[1,0])
+        self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def picture_right(self):
+        if (self.picture_index == (len(self.saved_pictures) - 1)): 
+            self.picture_index = 0 
         self.picture_index += 1
         self.shown_picture = self.saved_pictures[self.picture_index]
-        # self.picture_gallery = Picture(self.gallery, width=300, height=200, image=self.shown_picture, grid=[1,0])
+        self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def show_gallery(self):
-        self.gallery = Window(self.app, bg="black", height=300, width=450, layout="grid",title="Gallery")
+        self.gallery = Window(self.app, bg="white", height=300, width=460, layout="grid",title="Gallery")
         self.saved_pictures = glob.glob('/home/pi/Downloads/*.jpg')
         self.shown_picture = self.saved_pictures[self.picture_index] 
         button_left = PushButton(self.gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/left.png", command=self.picture_left)    
-        self.picture_gallery = Picture(self.gallery, width=300, height=200, image=self.shown_picture, grid=[1,0]) 
+        self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0]) 
         button_right = PushButton(self.gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/right.png", command=self.picture_right) 
         self.gallery.show()
 
@@ -159,7 +159,7 @@ class piDSLR:
 
     def upload(self):
         self.show_busy()
-        subprocess.Popen(["python3", "/home/pi/piDSLR/dropbox.py", "--yes"])
+        subprocess.Popen(["python3", "/home/pi/piDSLR/dropbox_upload.py", "--yes"])
         self.hide_busy()
 
 if __name__ == '__main__':
