@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=PiDSLR
+Exec=/usr/bin/python3 /home/pi/piDSLR/pidslr.py
+
