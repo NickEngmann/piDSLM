@@ -85,7 +85,7 @@ class piDSLR:
         self.show_busy()
         capture_number = self.timestamp()
         print("Raspistill starts")
-        os.system("raspistill -rot 90 -t 10000 -tl 0 --thumb none -n -bm -o /home/pi/Downloads/BR" +str(capture_number) + "%04d.jpg")
+        os.system("raspistill -t 10000 -tl 0 --thumb none -n -bm -o /home/pi/Downloads/BR" +str(capture_number) + "%04d.jpg")
         print("Raspistill done")
         self.hide_busy()
         
@@ -93,7 +93,7 @@ class piDSLR:
         self.show_busy()
         capture_number = self.timestamp()
         print("Raspivid starts")
-        os.system("raspivid -f -rot 90 -t 1800000 -sg 300000  -o /home/pi/Downloads/" +str(capture_number) + "vid%04d.h264")
+        os.system("raspivid -f -t 1800000 -sg 300000  -o /home/pi/Downloads/" +str(capture_number) + "vid%04d.h264")
         print("done")
         self.hide_busy()
     
@@ -101,21 +101,21 @@ class piDSLR:
         self.show_busy()
         capture_number = self.timestamp()
         print("Raspistill timelapse starts")
-        os.system("raspistill -rot 90 -t 3600000 -tl 60000 --thumb none -n -bm -o /home/pi/Downloads/TL" +str(capture_number) + "%04d.jpg")
+        os.system("raspistill -t 3600000 -tl 60000 --thumb none -n -bm -o /home/pi/Downloads/TL" +str(capture_number) + "%04d.jpg")
         print("Raspistill timelapse done")
         self.hide_busy()
 
     def long_preview(self):
         self.show_busy()
         print("30 second preview")
-        os.system("raspistill -f -rot 90 -t 30000")
+        os.system("raspistill -f -t 30000")
         self.hide_busy()
 
     def capture_image(self):
         self.show_busy()
         capture_number = self.timestamp()
         print("Raspistill starts")
-        os.system("raspistill -f -rot 90 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
+        os.system("raspistill -f -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
         print("Raspistill done")
         self.hide_busy()
 
@@ -123,7 +123,7 @@ class piDSLR:
         print ("Button event callback")
         capture_number = self.timestamp()
         print("Raspistill starts")
-        os.system("raspistill -f -rot 90 -t 2500 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
+        os.system("raspistill -f -t 2500 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
         print("Raspistill done")
 
     def picture_left(self):
@@ -153,7 +153,7 @@ class piDSLR:
         self.show_busy()
         capture_number = self.timestamp()
         print("Raspivid starts")
-        os.system("raspivid -f -rot 90 -t 30000 -o /home/pi/Downloads/" +str(capture_number) + "vid.h264")
+        os.system("raspivid -f -t 30000 -o /home/pi/Downloads/" +str(capture_number) + "vid.h264")
         print("done")
         self.hide_busy()
 
