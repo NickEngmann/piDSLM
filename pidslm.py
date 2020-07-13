@@ -9,7 +9,7 @@ import subprocess
 import RPi.GPIO as GPIO # Import Raspberry Pi GPIO library
 
 
-class piDSLR:
+class piDSLM:
     def __init__(self):
         self.capture_number = self.timestamp()
         self.video_capture_number = self.timestamp()
@@ -24,30 +24,30 @@ class piDSLR:
             
         self.app = App(layout="grid", title="Camera Controls", bg="black", width=480, height=320)
 
-        text0 = Text(self.app,color="white", grid=[1,0], text="- PiDSLR -")
+        text0 = Text(self.app,color="white", grid=[1,0], text="- PiDSLM -")
 
-        button1 = PushButton(self.app, grid=[1,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLR/icon/prev.png", command=self.long_preview)
+        button1 = PushButton(self.app, grid=[1,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLM/icon/prev.png", command=self.long_preview)
         text1 = Text(self.app, color="white", grid=[1,2],text="Focus")
 
-        button2 = PushButton(self.app, grid=[3,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLR/icon/gallery.png", command=self.show_gallery)
+        button2 = PushButton(self.app, grid=[3,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLM/icon/gallery.png", command=self.show_gallery)
         text2 = Text(self.app, color="white", grid=[3,2],text="Gallery")
 
-        button3 = PushButton(self.app, grid=[5,1], width=110, height=110,  pady=35, padx=10, image="/home/pi/piDSLR/icon/vid.png", command=self.video_capture)
+        button3 = PushButton(self.app, grid=[5,1], width=110, height=110,  pady=35, padx=10, image="/home/pi/piDSLM/icon/vid.png", command=self.video_capture)
         text2 = Text(self.app, color="white", grid=[5,2],text="HD 30s")
 
-        button4 = PushButton(self.app, grid=[7,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLR/icon/lapse.png", command=self.burst)
+        button4 = PushButton(self.app, grid=[7,1], width=110, height=110, pady=35, padx=10, image="/home/pi/piDSLM/icon/lapse.png", command=self.burst)
         text3 = Text(self.app, color="white", grid=[7,2],text="Burst")
 
-        button5 = PushButton(self.app, grid=[1,3], width=110, height=110, image="/home/pi/piDSLR/icon/self.png", command=self.lapse)
+        button5 = PushButton(self.app, grid=[1,3], width=110, height=110, image="/home/pi/piDSLM/icon/self.png", command=self.lapse)
         text4 = Text(self.app, color="white", grid=[1,4],text="1h 60pix")
 
-        button6 = PushButton(self.app, grid=[3,3], width=110, height=110, image="/home/pi/piDSLR/icon/long.png", command=self.split_hd_30m)
+        button6 = PushButton(self.app, grid=[3,3], width=110, height=110, image="/home/pi/piDSLM/icon/long.png", command=self.split_hd_30m)
         text2 = Text(self.app, color="white", grid=[3,4],text="HD 30m in 5s")
 
-        button7 = PushButton(self.app, grid=[5,3], width=110, height=110, image="/home/pi/piDSLR/icon/drop.png", command=self.upload)
+        button7 = PushButton(self.app, grid=[5,3], width=110, height=110, image="/home/pi/piDSLM/icon/drop.png", command=self.upload)
         text3 = Text(self.app, color="white", grid=[5,4],text="Upload")
 
-        button8 = PushButton(self.app, grid=[7,3], width=110, height=110, image="/home/pi/piDSLR/icon/del.png", command=self.clear)
+        button8 = PushButton(self.app, grid=[7,3], width=110, height=110, image="/home/pi/piDSLM/icon/del.png", command=self.clear)
         text4 = Text(self.app, color="white", grid=[7,4],text="Clear Folder")
 
         self.busy = Window(self.app, bg="red",  height=175, width=480, title="busy")
@@ -144,9 +144,9 @@ class piDSLR:
         self.gallery = Window(self.app, bg="white", height=300, width=460, layout="grid",title="Gallery")
         self.saved_pictures = glob.glob('/home/pi/Downloads/*.jpg')
         self.shown_picture = self.saved_pictures[self.picture_index] 
-        button_left = PushButton(self.gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/left.png", command=self.picture_left)    
+        button_left = PushButton(self.gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/left.png", command=self.picture_left)    
         self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0]) 
-        button_right = PushButton(self.gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLR/icon/right.png", command=self.picture_right) 
+        button_right = PushButton(self.gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/right.png", command=self.picture_right) 
         self.gallery.show()
 
     def video_capture(self):
@@ -159,9 +159,9 @@ class piDSLR:
 
     def upload(self):
         self.show_busy()
-        subprocess.Popen(["python3", "/home/pi/piDSLR/dropbox_upload.py", "--yes"])
+        subprocess.Popen(["python3", "/home/pi/piDSLM/dropbox_upload.py", "--yes"])
         self.hide_busy()
 
 if __name__ == '__main__':
-    standalone_app = piDSLR()
+    standalone_app = piDSLM()
     standalone_app.run()
