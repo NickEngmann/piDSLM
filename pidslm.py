@@ -107,8 +107,8 @@ class piDSLM:
 
     def long_preview(self):
         self.show_busy()
-        print("30 second preview")
-        os.system("raspistill -f -t 30000")
+        print("15 second preview")
+        os.system("raspistill -f -t 15000")
         self.hide_busy()
 
     def capture_image(self):
@@ -123,7 +123,7 @@ class piDSLM:
         print ("Button event callback")
         capture_number = self.timestamp()
         print("Raspistill starts")
-        os.system("raspistill -f -t 2500 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
+        os.system("raspistill -f -t 3500 -o /home/pi/Downloads/" +str(capture_number) + "cam.jpg")
         print("Raspistill done")
 
     def picture_left(self):
