@@ -1,3 +1,5 @@
+![Tests](https://github.com/NickEngmann/piDSLM/actions/workflows/test.yml/badge.svg)
+
 piDSLM - Raspberry Pi Digital Single Lens Mirrorless
 ===============
 
@@ -50,5 +52,8 @@ Finally, run the INSTALL.sh script using the following command
 sudo ./INSTALL.sh
 ```
 
+## Running Tests
 
-
+```bash
+pytest
+```
