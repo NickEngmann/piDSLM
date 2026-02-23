@@ -1,2 +1,8 @@
 ./__pycache__/
 ./__pycache__
+# Build artifacts
+*.pyc
+__pycache__/
+*.o
+*.so
+.pytest_cache/

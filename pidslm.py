@@ -127,27 +127,45 @@ class piDSLM:
         print("Raspistill done")
 
     def picture_left(self):
-        if (self.picture_index == 0):
-            self.pictures = (len(self.saved_pictures) - 1)    
-        self.picture_index -= 1
+        if not self.saved_pictures:
+            return
+        if (self.picture_index <= 0):
+            self.picture_index = len(self.saved_pictures) - 1
+        else:
+            self.picture_index -= 1
         self.shown_picture = self.saved_pictures[self.picture_index]
+        self.picture_gallery.destroy()
         self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def picture_right(self):
-        if (self.picture_index == (len(self.saved_pictures) - 1)): 
+        if not self.saved_pictures:
+            return
+        if (self.picture_index >= len(self.saved_pictures) - 1): 
             self.picture_index = 0 
-        self.picture_index += 1
+        else:
+            self.picture_index += 1
         self.shown_picture = self.saved_pictures[self.picture_index]
+        self.picture_gallery.destroy()
         self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def show_gallery(self):
         self.gallery = Window(self.app, bg="white", height=300, width=460, layout="grid",title="Gallery")
         self.saved_pictures = glob.glob('/home/pi/Downloads/*.jpg')
-        self.shown_picture = self.saved_pictures[self.picture_index] 
-        button_left = PushButton(self.gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/left.png", command=self.picture_left)    
-        self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0]) 
-        button_right = PushButton(self.gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/right.png", command=self.picture_right) 
+        if not self.saved_pictures:
+            self.picture_index = 0
+            text = Text(self.gallery, color="black", grid=[1,0], text="No pictures found")
+            return
+        if self.picture_index >= len(self.saved_pictures):
+            self.picture_index = 0
+        self.shown_picture = self.saved_pictures[self.picture_index]
+        button_left = PushButton(self.gallery, grid=[0,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/left.png", command=self.picture_left)
+        self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
+        button_right = PushButton(self.gallery, grid=[2,0], width=40, height=50, pady=50, padx=10, image="/home/pi/piDSLM/icon/right.png", command=self.picture_right)
         self.gallery.show()
+
+    def run(self):
+        """Start the GUI main loop."""
+        self.app.display()
 
     def video_capture(self):
         self.show_busy()
