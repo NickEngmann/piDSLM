@@ -1,2 +1,14 @@
 ./__pycache__/
 ./__pycache__
+# Auto-added by Marisol pipeline
+node_modules/
+*.pyc
+.pytest_cache/
+*.o
+*.so
+.env
+debug_*.py
+.cache/
+dist/
+build/
+*.egg-info/
