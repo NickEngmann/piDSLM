@@ -165,3 +165,7 @@ class piDSLM:
 if __name__ == '__main__':
     standalone_app = piDSLM()
     standalone_app.run()
+
+    def run(self):
+        """Run the main application loop."""
+        self.app.display()
