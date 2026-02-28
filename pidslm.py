@@ -127,17 +127,25 @@ class piDSLM:
         print("Raspistill done")
 
     def picture_left(self):
+        if not self.saved_pictures:
+            return
         if (self.picture_index == 0):
-            self.pictures = (len(self.saved_pictures) - 1)    
-        self.picture_index -= 1
+            self.picture_index = len(self.saved_pictures) - 1
+        else:
+            self.picture_index -= 1
         self.shown_picture = self.saved_pictures[self.picture_index]
+        self.picture_gallery.destroy()
         self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def picture_right(self):
+        if not self.saved_pictures:
+            return
         if (self.picture_index == (len(self.saved_pictures) - 1)): 
             self.picture_index = 0 
-        self.picture_index += 1
+        else:
+            self.picture_index += 1
         self.shown_picture = self.saved_pictures[self.picture_index]
+        self.picture_gallery.destroy()
         self.picture_gallery = Picture(self.gallery, width=360, height=270, image=self.shown_picture, grid=[1,0])
 
     def show_gallery(self):
