@@ -50,5 +50,39 @@ Finally, run the INSTALL.sh script using the following command
 sudo ./INSTALL.sh
 ```
 
+# Usage
 
+The main application provides a GUI interface for camera control:
 
+1. Launch the application: `python3 pidslm.py`
+2. Use the on-screen buttons to:
+   - Take photos
+   - Record videos
+   - View captured media in gallery
+   - Upload footage to Dropbox
+
+The interface is designed for the MHS35-TFT display on Raspberry Pi.
+
+# Testing
+
+Run the test suite using pytest:
+
+```bash
+python -m pytest tests/ -v
+```
+
+The tests use hardware mocks provided in `tests/conftest.py` for RPi.GPIO, guizero, and other hardware modules.
+
+# Contributing
+
+This project is inspired by the MerlinPi project. Feel free to:
+
+- Submit bug reports and feature requests
+- Contribute camera grip designs for the enclosure
+- Share improvements to the codebase
+
+For design contributions, reach out to the author for inclusion.
+
+# License
+
+This project is based on the MerlinPi project by Martin Manders. Please respect the original license and contributors.
