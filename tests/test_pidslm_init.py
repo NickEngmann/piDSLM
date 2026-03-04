@@ -17,6 +17,9 @@ def test_app_initialization():
                 with patch('guizero.Picture'):
                     with patch('guizero.Window'):
                         with patch('RPi.GPIO') as mock_gpio:
+                            # Clear any cached imports
+                            if 'pidslm' in sys.modules:
+                                del sys.modules['pidslm']
                             import pidslm
                             app = pidslm.piDSLM()
                             assert app is not None

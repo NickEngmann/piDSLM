@@ -8,6 +8,11 @@ import sys, os
 import subprocess
 import RPi.GPIO as GPIO # Import Raspberry Pi GPIO library
 
+# GPIO Pin Constants
+SHUTTER_PIN = 16
+VIDEO_PIN = 18
+BUSY_PIN = 25
+
 
 class piDSLM:
     def __init__(self):
@@ -17,10 +22,7 @@ class piDSLM:
         self.saved_pictures = [] 
         self.shown_picture = "" 
       
-        GPIO.setwarnings(False) # Ignore warning for now
-        GPIO.setmode(GPIO.BCM)     # set up BCM GPIO numbering
-        GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(16, GPIO.FALLING, callback=self.takePicture, bouncetime=2500)
+        self.setup_gpio()
             
         self.app = App(layout="grid", title="Camera Controls", bg="black", width=480, height=320)
 
@@ -55,6 +57,15 @@ class piDSLM:
         self.app.tk.attributes("-fullscreen", True)
         self.busy.hide()
         self.app.display()
+
+    def setup_gpio(self):
+        """Setup GPIO pins for camera control."""
+        GPIO.setwarnings(False) # Ignore warning for now
+        GPIO.setmode(GPIO.BCM)     # set up BCM GPIO numbering
+        GPIO.setup(SHUTTER_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.add_event_detect(SHUTTER_PIN, GPIO.FALLING, callback=self.takePicture, bouncetime=2500)
+        GPIO.setup(VIDEO_PIN, GPIO.OUT)
+        GPIO.setup(BUSY_PIN, GPIO.OUT)
 
     def clear(self):
         self.show_busy()
