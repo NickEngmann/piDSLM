@@ -1,54 +1,140 @@
 piDSLM - Raspberry Pi Digital Single Lens Mirrorless
 ===============
 
-Camera project for Raspberry Pi 2/3 + HQ Camera +  MHS35-TFT
+Camera project for Raspberry Pi 2/3 + HQ Camera + MHS35-TFT
 
-<img src="https://i.imgur.com/VspFA5V.jpg" data-canonical-src="https://i.imgur.com/VspFA5V.jpg" width="400" height="400" />
+![piDSLM](https://i.imgur.com/VspFA5V.jpg)
 
-# Introduction
+## Overview
 
-Made an enclosure to host the [HQ Raspberry Pi Camera](https://www.raspberrypi.org/products/raspberry-pi-high-quality-camera/) as a standalone battery-powered DSLM that I'm calling piDSLM. Check out the links below for instructions on how to recreate the project!
+piDSLM provides a DSLR-like interface for the Raspberry Pi HQ Camera with GPIO controls. The application features:
 
-The design includes a few modular camera grips for users. Feel free to make your own designs and reach out to me so I can include them!
+- Photo capture and video recording
+- GPIO button controls for shutter and menu navigation
+- MHS35-TFT display integration
+- Dropbox cloud upload support
+- Customizable camera settings
 
-For More Info:
+## Features
 
-- [Hackster](https://www.hackster.io/projects/2a86c3)
+- **Camera Control**: Full DSLR-like interface for photo and video capture
+- **GPIO Integration**: Physical button controls for shutter and menu navigation
+- **Display Support**: Compatible with MHS35-TFT display
+- **Cloud Storage**: Automatic Dropbox upload functionality
+- **Custom Settings**: Adjustable camera parameters
+
+## Installation
+
+### Prerequisites
+
+- Raspberry Pi 2 or 3 (or compatible hardware)
+- Raspberry Pi HQ Camera
+- MHS35-TFT display
+- GPIO buttons for control
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/NickEngmann/piDSLM.git
+   cd piDSLM
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the installation script (requires sudo):
+   ```bash
+   sudo bash INSTALL.sh
+   ```
+
+## Usage
+
+### Running the Application
+
+```bash
+python3 pidslm.py
+```
+
+The application provides a GUI interface for:
+- Capturing photos
+- Recording videos
+- Managing camera settings
+- Uploading to Dropbox
+
+### GPIO Controls
+
+Physical buttons are connected to GPIO pins for:
+- Shutter button (photo/video capture)
+- Menu navigation buttons
+- Settings adjustment
+
+### Dropbox Integration
+
+Upload photos and videos to Dropbox:
+```bash
+python3 dropbox_upload.py --yes
+```
+
+## Testing
+
+### Running Tests
+
+The project uses pytest with comprehensive hardware mocking for Raspberry Pi modules.
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+### Test Infrastructure
+
+- **conftest.py**: Auto-generates mocks for 15+ RPi hardware modules (RPi.GPIO, picamera, guizero, spidev, smbus, gpiozero, etc.)
+- **embedded_mocks.py**: Contains MockGPIO, MockI2C, MockSPI, MockUART classes
+- **Hardware mocking**: Required for running tests on non-RPi systems
+
+### Test Requirements
+
+Tests require the following to be mocked:
+- RPi.GPIO for GPIO control
+- picamera for camera operations
+- guizero GUI components
+- Other hardware interfaces (I2C, SPI, UART)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Setup
+
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. For testing on non-RPi hardware, ensure conftest.py mocks are available
+4. Run tests: `python3 -m pytest tests/ -v`
+
+### Code Style
+
+- Follow PEP 8 style guidelines
+- Add tests for new features
+- Document new functionality in README.md
+
+## Dependencies
+
+- Pillow: Image processing
+- guizero: GUI framework
+- dropbox: Cloud storage integration
+- guizero[images]: Image handling extensions
+- RPi.GPIO: GPIO control (mocked for testing)
+- picamera: Camera operations (mocked for testing)
+
+## Links
+
 - [GitHub](https://github.com/NickEngmann/piDSLM)
-- [Instructables] ( TBD )
+- [Instructables](TBD)
+- [OnShape Design](https://bit.ly/raspi-onshape)
+- [PayPal Donations](https://paypal.me/nickengman)
 
-Designed using
-- [OnShape](https://bit.ly/raspi-onshape)
+## License
 
-If you found this useful, please donate what you think it is worth to my [paypal.me](https://paypal.me/nickengman). Help cover the time of design.
-
-Thanks, Enjoy!
-
-# Installation
-
-For the codebase, I built the piDSLM codebase off of a forked a copy of fellow DIYer Martin Manders [MerlinPi project](https://github.com/MisterEmm/MerlinPi). The piDSLM codebase is still in its infancy but it allows the user to take photos/videos, and view them in a gallery. It also allows users to bulk upload the footage to Dropbox. To begin ssh into the Raspberry Pi and run the following command:
-
-```
-
-git clone https://github.com/NickEngmann/pidslm.git
-cd pidslm
-```
-
-You're then going to retrieve a Dropbox Access token to enable to Dropbox footage upload feature. To do this go ahead and [go to the Application Developer page on Dropbox](https://www.dropbox.com/developers/apps). Create an application and click the Generate Access Token button to generate your access token.
-
-Then replace the dummy access token in Dropbox_upload.py with your new access token.
-
-```
-
-# OAuth2 access token.  TODO: login etc.
-TOKEN = 'YOUR_ACCESS_TOKEN'
-```
-
-Finally, run the INSTALL.sh script using the following command
-
-```
-sudo ./INSTALL.sh
-```
-
-
-
+MIT License
