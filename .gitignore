@@ -12,3 +12,10 @@ debug_*.py
 dist/
 build/
 *.egg-info/
+
+# Auto-added by Marisol pipeline
+MARISOL.md
+.pio/
+.gradle/
+*.class
+local.properties
