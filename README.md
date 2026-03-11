@@ -50,5 +50,93 @@ Finally, run the INSTALL.sh script using the following command
 sudo ./INSTALL.sh
 ```
 
+# Usage
 
+The main application (`pidslm.py`) provides a graphical interface for:
 
+- Taking photos and videos
+- Viewing captured media in a gallery
+- Uploading footage to Dropbox
+
+## Starting the Application
+
+```bash
+python3 pidslm.py
+```
+
+## Gallery
+
+The gallery displays images from `/home/pi/Pictures/` directory. Navigate through captured media using the touchscreen interface.
+
+## Dropbox Upload
+
+To enable Dropbox uploads, configure your OAuth2 access token in `dropbox_upload.py`:
+
+```python
+TOKEN = 'YOUR_ACTUAL_ACCESS_TOKEN'
+```
+
+Generate your token from the [Dropbox Developer Console](https://www.dropbox.com/developers/apps).
+
+# Testing
+
+The project uses pytest for testing with hardware mocks for Raspberry Pi components.
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+## Test Infrastructure
+
+- **Hardware Mocks**: `conftest.py` auto-generates mocks for 15+ RPi modules (RPi.GPIO, I2C, SPI, UART, etc.)
+- **Mock Classes**: `embedded_mocks.py` provides `MockGPIO`, `MockI2C`, `MockSPI`, `MockUART`
+- **Test Template**: `tests/test_example.py` shows how to write tests using the mocks
+
+## Example Test
+
+```python
+from embedded_mocks import MockGPIO
+
+def test_gpio_pin_control():
+    gpio = MockGPIO()
+    gpio.setmode(gpio.BCM)
+    gpio.setup(17, gpio.OUTPUT)
+    gpio.output(17, gpio.HIGH)
+    assert gpio.input(17) == gpio.HIGH
+```
+
+# Contributing
+
+## Design Contributions
+
+The project uses modular camera grips designed in [OnShape](https://bit.ly/raspi-onshape). Feel free to create your own designs and share them.
+
+## Code Contributions
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## Dependencies
+
+- **Pillow**: Image processing
+- **guizero**: GUI framework
+- **dropbox**: Dropbox API integration
+- **RPi.GPIO**: Hardware control (requires Raspberry Pi or mocked environment)
+
+# License
+
+This project is based on the [MerlinPi project](https://github.com/MisterEmm/MerlinPi) by Martin Manders.
+
+# Support
+
+If you found this project useful, consider donating via [paypal.me/nickengman](https://paypal.me/nickengman) to help cover design time.
+
+# Links
+
+- [Hackster Project Page](https://www.hackster.io/projects/2a86c3)
+- [GitHub Repository](https://github.com/NickEngmann/piDSLM)
+- [OnShape Design](https://bit.ly/raspi-onshape)
