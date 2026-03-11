@@ -1,7 +1,7 @@
 piDSLM - Raspberry Pi Digital Single Lens Mirrorless
 ===============
 
-Camera project for Raspberry Pi 2/3 + HQ Camera +  MHS35-TFT
+Camera project for Raspberry Pi 2/3 + HQ Camera + MHS35-TFT
 
 <img src="https://i.imgur.com/VspFA5V.jpg" data-canonical-src="https://i.imgur.com/VspFA5V.jpg" width="400" height="400" />
 
@@ -24,31 +24,125 @@ If you found this useful, please donate what you think it is worth to my [paypal
 
 Thanks, Enjoy!
 
+# Features
+
+- **Photo Capture**: Take high-quality photos with the HQ Camera
+- **Video Recording**: Record video footage
+- **Gallery View**: Browse captured photos and videos on the MHS35-TFT display
+- **Dropbox Upload**: Bulk upload footage to Dropbox cloud storage
+- **Battery Powered**: Standalone operation with portable power
+
 # Installation
 
-For the codebase, I built the piDSLM codebase off of a forked a copy of fellow DIYer Martin Manders [MerlinPi project](https://github.com/MisterEmm/MerlinPi). The piDSLM codebase is still in its infancy but it allows the user to take photos/videos, and view them in a gallery. It also allows users to bulk upload the footage to Dropbox. To begin ssh into the Raspberry Pi and run the following command:
+## Prerequisites
 
-```
+- Raspberry Pi 2 or 3
+- Raspberry Pi HQ Camera
+- MHS35-TFT display
+- Python 3.12
+- guizero (GUI framework)
+- dropbox (for cloud uploads)
 
+## Setup
+
+1. Clone the repository:
+```bash
 git clone https://github.com/NickEngmann/pidslm.git
 cd pidslm
 ```
 
-You're then going to retrieve a Dropbox Access token to enable to Dropbox footage upload feature. To do this go ahead and [go to the Application Developer page on Dropbox](https://www.dropbox.com/developers/apps). Create an application and click the Generate Access Token button to generate your access token.
-
-Then replace the dummy access token in Dropbox_upload.py with your new access token.
-
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-# OAuth2 access token.  TODO: login etc.
-TOKEN = 'YOUR_ACCESS_TOKEN'
+3. Configure Dropbox access token:
+   - Go to the [Dropbox Developer Console](https://www.dropbox.com/developers/apps)
+   - Create an application
+   - Click "Generate Access Token" to create your token
+   - Edit `dropbox_upload.py` and replace the token:
+
+```python
+# OAuth2 access token
+TOKEN = 'YOUR_ACCESS_TOKEN_HERE'
 ```
 
-Finally, run the INSTALL.sh script using the following command
-
-```
+4. Run the installation script:
+```bash
 sudo ./INSTALL.sh
 ```
 
+# Usage
 
+## Running the Application
 
+```bash
+python3 pidslm.py
+```
+
+The application provides a GUI with the following controls:
+
+- **Take Photo**: Captures an image to the Downloads folder
+- **Start Video**: Begins video recording
+- **Stop Video**: Ends video recording
+- **View Gallery**: Opens a window to browse captured media
+- **Upload to Dropbox**: Bulk uploads all media from Downloads to Dropbox
+
+## File Locations
+
+- Photos and videos are saved to: `/home/pi/Downloads/`
+- Application logs: `/home/pi/piDSLM/logs/`
+- Configuration: See `dropbox_upload.py` for Dropbox settings
+
+# Testing
+
+## Running Tests
+
+The project uses pytest for testing with hardware mocks:
+
+```bash
+pytest tests/ -v
+```
+
+Tests are located in the `tests/` directory:
+- `test_example.py`: Example test template
+- `embedded_mocks.py`: Hardware simulation (RPi.GPIO, I2C, SPI, UART)
+- `conftest.py`: Test configuration with auto-mocked hardware modules
+
+## Mocked Hardware
+
+Tests run in a containerized environment with mocked hardware:
+- RPi.GPIO: Mocked for GPIO pin control
+- I2C: Mocked for I2C bus communication
+- SPI: Mocked for SPI communication
+- UART: Mocked for serial communication
+- guizero: Mocked for GUI components
+
+# Project Structure
+
+```
+piDSLM/
+├── pidslm.py          # Main application with GUI controls
+├── dropbox_upload.py  # Dropbox upload functionality
+├── INSTALL.sh         # Installation script
+├── requirements.txt   # Python dependencies
+├── tests/
+│   ├── test_example.py
+│   ├── embedded_mocks.py
+│   └── conftest.py
+└── README.md          # This file
+```
+
+# Known Issues
+
+- Requires Raspberry Pi hardware for full functionality
+- Dropbox OAuth token must be configured in `dropbox_upload.py`
+- GPIO operations need hardware or mocked environment
+
+# License
+
+This project is built on Martin Manders' [MerlinPi project](https://github.com/MisterEmm/MerlinPi). See original project for licensing details.
+
+# Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
