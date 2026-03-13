@@ -162,6 +162,54 @@ class piDSLM:
         subprocess.Popen(["python3", "/home/pi/piDSLM/dropbox_upload.py", "--yes"])
         self.hide_busy()
 
+    @staticmethod
+    def take_photo(app):
+        """Take a photo and save it."""
+        capture_number = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        subprocess.run(["raspistill", "-f", "-t", "3500", "-o", f"/home/pi/Downloads/{capture_number}cam.jpg"])
+        app.current_image = f"/home/pi/Downloads/{capture_number}cam.jpg"
+        app.camera_status = 'Photo taken'
+
+    @staticmethod
+    def display_gallery(app):
+        """Display the photo gallery."""
+        images = glob.glob('/home/pi/Downloads/*.jpg')
+        if images:
+            app.current_image = images[0]
+            app.camera_status = 'Gallery displayed'
+
+    @staticmethod
+    def show_busy(app):
+        """Show busy indicator."""
+        if hasattr(app.app, 'info'):
+            app.app.info("Busy")
+        app.camera_status = 'Busy'
+
+    @staticmethod
+    def hide_busy(app):
+        """Hide busy indicator."""
+        if hasattr(app.app, 'info'):
+            app.app.info("Ready")
+        app.camera_status = 'Ready'
+
+    @staticmethod
+    def upload_to_dropbox(app):
+        """Upload to Dropbox."""
+        subprocess.run(["python3", "/home/pi/piDSLM/dropbox_upload.py", "--yes"])
+        app.camera_status = 'Upload complete'
+
+    @staticmethod
+    def get_image_files(app):
+        """Get list of image files."""
+        return glob.glob('/home/pi/Downloads/*')
+
+    @staticmethod
+    def create_directory(app, path):
+        """Create a directory if it doesn't exist."""
+        if not os.path.exists(path):
+            os.makedirs(path)
+        app.camera_status = f'Directory created: {path}'
+
 if __name__ == '__main__':
     standalone_app = piDSLM()
     standalone_app.run()
