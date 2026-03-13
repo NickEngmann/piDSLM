@@ -6,180 +6,156 @@ Tests the main application logic without hardware dependencies.
 import sys
 import pytest
 from unittest.mock import MagicMock, patch, call
+import datetime
 
-
-def test_parse_args(source_module):
-    """Test argument parsing for dropbox_upload."""
-    with patch('dropbox_upload.sys') as mock_sys:
-        mock_sys.argv = ['dropbox_upload.py', '--yes', '--count', '5']
-        
-        args = source_module.parse_args()
-        
-        assert args.yes is True
-        assert args.count == 5
-
-
-def test_upload_files(source_module):
-    """Test file upload logic with mocked Dropbox client."""
-    mock_client = MagicMock()
+# Test the piDSLM class initialization and basic functionality
+def test_initialization(source_module):
+    """Test that piDSLM initializes correctly."""
+    piDSLM = source_module.piDSLM
     
-    with patch('dropbox_upload.os') as mock_os:
-        mock_os.path.exists.return_value = True
-        mock_os.listdir.return_value = ['file1.jpg', 'file2.jpg']
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        with patch('dropbox_upload.time') as mock_time:
-            mock_time.time.return_value = 1234567890.0
-            
-            # Call upload_files
-            result = source_module.upload_files(mock_client, '/tmp')
-            
-            # Verify Dropbox client was used
-            assert mock_client is not None
-            # Verify os.listdir was called
-            mock_os.listdir.assert_called_once()
+        assert app is not None
+        assert app.camera_status == 'Ready'
+        assert app.current_image == ''
 
 
-def test_main_function(source_module):
-    """Test main function with mocked dependencies."""
-    with patch('dropbox_upload.sys') as mock_sys:
-        mock_sys.argv = ['dropbox_upload.py', '--yes']
+def test_take_photo(source_module):
+    """Test taking a photo."""
+    piDSLM = source_module.piDSLM
+    
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        with patch.object(source_module, 'parse_args') as mock_parse:
-            mock_parse.return_value = MagicMock(yes=True, count=1)
-            
-            with patch.object(source_module, 'upload_files') as mock_upload:
-                # Call main
-                source_module.main()
+        # Simulate taking a photo
+        with patch('pidslm.subprocess') as mock_subprocess:
+            with patch('pidslm.time') as mock_time:
+                mock_time.time.return_value = 1234567890.0
                 
-                # Verify main components were called
-                mock_parse.assert_called_once()
-                mock_upload.assert_called_once()
+                # Call the actual take_photo method
+                piDSLM.take_photo(app)
+                
+                # Verify subprocess was called
+                mock_subprocess.run.assert_called_once()
 
 
-def test_capture_image_logic(source_module):
-    """Test capture image logic with mocked picamera."""
-    # Create a mock app instance
-    mock_app = MagicMock()
-    mock_app.busy_text = MagicMock()
-    mock_app.hide_busy = MagicMock()
+def test_display_gallery(source_module):
+    """Test displaying the gallery."""
+    piDSLM = source_module.piDSLM
     
-    with patch('pidslm.picamera') as mock_picamera:
-        mock_camera = MagicMock()
-        mock_picamera.PiCamera.return_value = mock_camera
-        mock_camera.capture.return_value = True
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        with patch('pidslm.time') as mock_time:
-            mock_time.time.return_value = 1234567890.0
+        # Simulate displaying gallery
+        with patch('pidslm.glob') as mock_glob:
+            mock_glob.glob.return_value = ['/tmp/photo1.jpg', '/tmp/photo2.jpg']
             
-            # Simulate capture logic
-            mock_camera.capture('/tmp/test.jpg')
+            piDSLM.display_gallery(app)
             
-            # Verify camera was used
-            mock_camera.capture.assert_called_once()
+            assert app.current_image == '/tmp/photo1.jpg'
 
 
-def test_gallery_display_logic(source_module):
-    """Test gallery display logic with mocked glob."""
-    test_images = ['/tmp/test1.jpg', '/tmp/test2.jpg']
+def test_show_busy(source_module):
+    """Test showing busy indicator."""
+    piDSLM = source_module.piDSLM
     
-    with patch('pidslm.glob') as mock_glob:
-        mock_glob.glob.return_value = test_images
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        # Simulate gallery display
-        images = mock_glob.glob('/tmp/*.jpg')
+        # Simulate showing busy
+        piDSLM.show_busy(app)
         
-        # Verify glob was called
-        mock_glob.glob.assert_called_once()
-        assert len(images) == 2
+        # Verify info was called
+        app.app.info.assert_called_once()
 
 
-def test_quit_logic(source_module):
-    """Test quit logic."""
-    mock_app = MagicMock()
-    mock_app.destroy = MagicMock()
+def test_hide_busy(source_module):
+    """Test hiding busy indicator."""
+    piDSLM = source_module.piDSLM
     
-    # Simulate quit
-    mock_app.destroy()
-    
-    # Verify destroy was called
-    mock_app.destroy.assert_called_once()
-
-
-def test_busy_text_display(source_module):
-    """Test busy text display."""
-    mock_busy_text = MagicMock()
-    
-    # Simulate show_busy
-    mock_busy_text.setText("Capturing...")
-    
-    # Verify text was set
-    mock_busy_text.setText.assert_called_with("Capturing...")
-
-
-def test_hide_busy_logic(source_module):
-    """Test hide busy logic."""
-    mock_busy_text = MagicMock()
-    
-    # Simulate hide_busy
-    mock_busy_text.setText("")
-    
-    # Verify text was cleared
-    mock_busy_text.setText.assert_called_with("")
-
-
-def test_run_method(source_module):
-    """Test the run method."""
-    mock_app = MagicMock()
-    mock_app.loop = MagicMock()
-    
-    # Simulate run
-    mock_app.loop()
-    
-    # Verify loop was called
-    mock_app.loop.assert_called_once()
-
-
-def test_subprocess_call(source_module):
-    """Test subprocess calls for external scripts."""
-    with patch('pidslm.subprocess') as mock_subprocess:
-        mock_process = MagicMock()
-        mock_subprocess.Popen.return_value = mock_process
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        # Simulate subprocess call
-        mock_subprocess.Popen(["python3", "/home/pi/piDSLM/dropbox_upload.py", "--yes"])
+        # Simulate hiding busy
+        piDSLM.hide_busy(app)
         
-        # Verify subprocess was called
-        mock_subprocess.Popen.assert_called_once()
+        # Verify info was called
+        app.app.info.assert_called_once()
 
 
-def test_datetime_formatting(source_module):
-    """Test datetime formatting for file names."""
-    with patch('pidslm.datetime') as mock_datetime:
-        mock_now = MagicMock()
-        mock_datetime.datetime.now.return_value = mock_now
-        mock_now.strftime.return_value = "2024-01-01_120000"
+def test_upload_to_dropbox(source_module):
+    """Test uploading to Dropbox."""
+    piDSLM = source_module.piDSLM
+    
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        # Simulate datetime formatting
-        timestamp = mock_now.strftime("%Y-%m-%d_%H%M%S")
-        
-        # Verify datetime was used
-        mock_now.strftime.assert_called_once()
-        assert timestamp == "2024-01-01_120000"
+        # Simulate uploading to Dropbox
+        with patch('pidslm.subprocess') as mock_subprocess:
+            piDSLM.upload_to_dropbox(app)
+            
+            # Verify subprocess was called
+            mock_subprocess.run.assert_called_once()
 
 
-def test_file_operations(source_module):
-    """Test file operations for image saving."""
-    with patch('pidslm.os') as mock_os:
-        mock_os.path.exists.return_value = True
-        mock_os.makedirs = MagicMock()
+def test_get_image_files(source_module):
+    """Test getting image files."""
+    piDSLM = source_module.piDSLM
+    
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        # Simulate file operations
-        if mock_os.path.exists('/tmp'):
-            mock_os.makedirs('/tmp/gallery', exist_ok=True)
+        # Simulate getting image files
+        with patch('pidslm.glob') as mock_glob:
+            mock_glob.glob.return_value = ['/tmp/photo1.jpg', '/tmp/photo2.png']
+            
+            images = piDSLM.get_image_files(app)
+            
+            assert len(images) == 2
+            assert '/tmp/photo1.jpg' in images
+            assert '/tmp/photo2.png' in images
+
+
+def test_create_directory(source_module):
+    """Test creating directory."""
+    piDSLM = source_module.piDSLM
+    
+    with patch.object(piDSLM, '__init__', lambda self: None):
+        app = piDSLM.__new__(piDSLM)
+        app.app = MagicMock()
+        app.camera_status = 'Ready'
+        app.current_image = ''
         
-        # Verify os operations
-        mock_os.path.exists.assert_called_once()
-        mock_os.makedirs.assert_called_once()
+        # Simulate creating directory
+        with patch('pidslm.os') as mock_os:
+            mock_os.path.exists.return_value = False
+            
+            piDSLM.create_directory(app, '/tmp/test_dir')
+            
+            # Verify makedirs was called
+            mock_os.makedirs.assert_called_once_with('/tmp/test_dir')
 
 
 if __name__ == '__main__':

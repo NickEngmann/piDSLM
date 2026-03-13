@@ -23,93 +23,11 @@ _RPI_MODULES = [
     'w1thermsensor', 'Adafruit_DHT',
     'RPIO', 'pigpio', 'wiringpi',
     'sense_hat', 'luma.core', 'luma.oled', 'luma.led_matrix',
-    'serial', 'serial.tools', 'serial.tools.list_ports',
-    # Adafruit motor/servo libraries (both legacy HAT and CircuitPython-style)
-    'Adafruit_MotorHAT', 'Adafruit_MotorHAT.Adafruit_MotorHAT',
-    'adafruit_motor', 'adafruit_motor.motor', 'adafruit_motor.servo', 'adafruit_motor.stepper',
-    'adafruit_pca9685', 'adafruit_servokit',
-    'adafruit_bus_device', 'adafruit_bus_device.i2c_device', 'adafruit_bus_device.spi_device',
-    # Cloud/voice backends commonly used with RPi projects
-    'firebase', 'pyrebase', 'firebase_admin',
-    'pyttsx3', 'gtts',
-    # Audio/media
-    'pygame', 'pygame.mixer', 'pygame.time', 'pygame.event',
-    'pyaudio', 'sounddevice', 'wave',
-    # Camera variants
-    'cv2', 'PIL', 'PIL.Image',
-    # iCreate/Roomba
-    'pycreate2', 'create2api',
+    'serial',
 ]
 
 for _mod in _RPI_MODULES:
     sys.modules[_mod] = MagicMock()
-
-# --- Realistic mock classes for Adafruit_MotorHAT ---
-# Many RPi projects use stepper/DC motors via this legacy library.
-# Provide real constants and class structure so LLM can write meaningful tests.
-_motorhat = sys.modules['Adafruit_MotorHAT']
-_motorhat.Adafruit_MotorHAT = MagicMock()
-_motorhat.Adafruit_MotorHAT.FORWARD = 1
-_motorhat.Adafruit_MotorHAT.BACKWARD = 2
-_motorhat.Adafruit_MotorHAT.BRAKE = 3
-_motorhat.Adafruit_MotorHAT.RELEASE = 4
-_motorhat.Adafruit_MotorHAT.SINGLE = 1
-_motorhat.Adafruit_MotorHAT.DOUBLE = 2
-_motorhat.Adafruit_MotorHAT.INTERLEAVE = 3
-_motorhat.Adafruit_MotorHAT.MICROSTEP = 4
-# .getStepper(steps, port) returns a mock stepper, .getMotor(port) returns DC motor
-_stepper_mock = MagicMock()
-_stepper_mock.oneStep = MagicMock(return_value=None)
-_stepper_mock.step = MagicMock(return_value=None)
-_motorhat.Adafruit_MotorHAT.return_value.getStepper = MagicMock(return_value=_stepper_mock)
-_dc_mock = MagicMock()
-_dc_mock.run = MagicMock(return_value=None)
-_dc_mock.setSpeed = MagicMock(return_value=None)
-_motorhat.Adafruit_MotorHAT.return_value.getMotor = MagicMock(return_value=_dc_mock)
-_motorhat.Adafruit_StepperMotor = MagicMock()
-_motorhat.Adafruit_DCMotor = MagicMock()
-# Also register in the sub-module path
-sys.modules['Adafruit_MotorHAT.Adafruit_MotorHAT'] = _motorhat
-
-# --- Realistic serial.Serial mock ---
-_serial = sys.modules['serial']
-_serial_inst = MagicMock()
-_serial_inst.is_open = True
-_serial_inst.in_waiting = 0
-_serial_inst.read = MagicMock(return_value=b'')
-_serial_inst.readline = MagicMock(return_value=b'')
-_serial_inst.write = MagicMock(return_value=0)
-_serial_inst.__enter__ = MagicMock(return_value=_serial_inst)
-_serial_inst.__exit__ = MagicMock(return_value=False)
-_serial.Serial = MagicMock(return_value=_serial_inst)
-
-# --- Realistic pygame.mixer mock ---
-_pygame = sys.modules['pygame']
-_pygame.init = MagicMock()
-_pygame.quit = MagicMock()
-_mixer = sys.modules['pygame.mixer']
-_mixer.init = MagicMock()
-_mixer.quit = MagicMock()
-_sound_inst = MagicMock()
-_sound_inst.play = MagicMock()
-_sound_inst.stop = MagicMock()
-_mixer.Sound = MagicMock(return_value=_sound_inst)
-_mixer.music = MagicMock()
-_mixer.music.load = MagicMock()
-_mixer.music.play = MagicMock()
-_mixer.music.stop = MagicMock()
-
-# --- Firebase mock with realistic interface ---
-_firebase = sys.modules['firebase']
-_db_mock = MagicMock()
-_db_mock.child = MagicMock(return_value=_db_mock)
-_db_mock.get = MagicMock(return_value=MagicMock(val=MagicMock(return_value={})))
-_db_mock.set = MagicMock(return_value=None)
-_db_mock.push = MagicMock(return_value={'name': '-mock_key'})
-_db_mock.update = MagicMock(return_value=None)
-_firebase.FirebaseApplication = MagicMock(return_value=_db_mock)
-_pyrebase = sys.modules['pyrebase']
-_pyrebase.initialize_app = MagicMock(return_value=MagicMock(database=MagicMock(return_value=_db_mock)))
 
 # Import hook: auto-mock ANY unknown hardware module during source file loading
 # This catches custom libraries like mp2624, adafruit_* variants, etc.
