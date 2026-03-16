@@ -92,7 +92,7 @@ def _is_while_true(node):
     test = node.test
     if isinstance(test, ast.Constant) and test.value in (True, 1):
         return True
-    if isinstance(test, ast.NameConstant) and test.value is True:
+    if hasattr(ast, "NameConstant") and isinstance(test, ast.NameConstant) and test.value is True:
         return True
     return False
 
