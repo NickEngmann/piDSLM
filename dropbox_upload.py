@@ -1,5 +1,8 @@
 """Upload the contents of your Downloads folder to Dropbox.
-This is an example app for API v2.
+
+This is an example app for API v2. Supports configuration via:
+- Command-line arguments (--token)
+- Environment variable DROPBOX_ACCESS_TOKEN
 """
 
 from __future__ import print_function
@@ -8,27 +11,29 @@ import argparse
 import contextlib
 import datetime
 import os
-import six
 import sys
 import time
 import unicodedata
 
-if sys.version.startswith('2'):
-    input = raw_input  # noqa: E501,F821; pylint: disable=redefined-builtin,undefined-variable,useless-suppression
+try:
+    import dropbox
+except ImportError:
+    print("Error: dropbox module not found. Install with: pip install dropbox")
+    sys.exit(1)
 
-import dropbox
+# Default token - can be overridden by environment variable
+_DEFAULT_TOKEN = os.environ.get('DROPBOX_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN')
 
-# OAuth2 access token.  TODO: login etc.
-TOKEN = 'YOUR_ACCESS_TOKEN'
-
-parser = argparse.ArgumentParser(description='Sync ~/Downloads to Dropbox')
+parser = argparse.ArgumentParser(
+    description='Sync ~/Downloads to Dropbox',
+    epilog='Set DROPBOX_ACCESS_TOKEN environment variable or use --token flag.'
+)
 parser.add_argument('folder', nargs='?', default='Downloads',
-                    help='Folder name in your Dropbox')
+                    help='Folder name in your Dropbox (default: Downloads)')
 parser.add_argument('rootdir', nargs='?', default='~/Downloads',
-                    help='Local directory to upload')
-parser.add_argument('--token', default=TOKEN,
-                    help='Access token '
-                    '(see https://www.dropbox.com/developers/apps)')
+                    help='Local directory to upload (default: ~/Downloads)')
+parser.add_argument('--token', default=None,
+                    help='Access token (defaults to DROPBOX_ACCESS_TOKEN env var)')
 parser.add_argument('--yes', '-y', action='store_true',
                     help='Answer yes to all questions')
 parser.add_argument('--no', '-n', action='store_true',
@@ -36,33 +41,46 @@ parser.add_argument('--no', '-n', action='store_true',
 parser.add_argument('--default', '-d', action='store_true',
                     help='Take default answer on all questions')
 
+
 def main():
     """Main program.
+    
     Parse command line, then iterate over files and directories under
     rootdir and upload all files.  Skips some temporary files and
     directories, and avoids duplicate uploads by comparing size and
     mtime with the server.
     """
     args = parser.parse_args()
+    
     if sum([bool(b) for b in (args.yes, args.no, args.default)]) > 1:
         print('At most one of --yes, --no, --default is allowed')
         sys.exit(2)
-    if not args.token:
-        print('--token is mandatory')
+    
+    # Resolve token: command line > env var > default
+    token = args.token
+    if token is None:
+        token = os.environ.get('DROPBOX_ACCESS_TOKEN')
+    if token is None or token == 'YOUR_ACCESS_TOKEN':
+        print('Error: No access token provided.')
+        print('Set DROPBOX_ACCESS_TOKEN environment variable or use --token flag.')
+        print('Get a token from: https://www.dropbox.com/developers/apps')
         sys.exit(2)
-
+    
     folder = args.folder
     rootdir = os.path.expanduser(args.rootdir)
     print('Dropbox folder name:', folder)
     print('Local directory:', rootdir)
+    
     if not os.path.exists(rootdir):
         print(rootdir, 'does not exist on your filesystem')
         sys.exit(1)
     elif not os.path.isdir(rootdir):
         print(rootdir, 'is not a folder on your filesystem')
         sys.exit(1)
-
-    dbx = dropbox.Dropbox(args.token)
+    
+    print('Initializing Dropbox connection...')
+    dbx = dropbox.Dropbox(token)
+    print('Connected to Dropbox successfully.')
 
     for dn, dirs, files in os.walk(rootdir):
         subfolder = dn[len(rootdir):].strip(os.path.sep)
@@ -72,8 +90,9 @@ def main():
         # First do all the files.
         for name in files:
             fullname = os.path.join(dn, name)
-            if not isinstance(name, six.text_type):
-                name = name.decode('utf-8')
+            # Handle unicode filenames (Python 3 compatibility)
+            if isinstance(name, bytes):
+                name = name.decode('utf-8', errors='replace')
             nname = unicodedata.normalize('NFC', name)
             if name.startswith('.'):
                 print('Skipping dot file:', name)
@@ -92,7 +111,7 @@ def main():
                 else:
                     print(name, 'exists with different stats, downloading')
                     res = download(dbx, folder, subfolder, name)
-                    with open(fullname) as f:
+                    with open(fullname, 'rb') as f:
                         data = f.read()
                     if res == data:
                         print(name, 'is already synced [content match]')
