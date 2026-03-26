@@ -13,6 +13,46 @@ import glob as _glob
 from unittest.mock import MagicMock
 import pytest
 
+# --- Mock Dropbox module for dropbox_upload tests ---
+try:
+    from unittest.mock import Mock
+    
+    class ApiError(Exception):
+        def __init__(self, error, user_message_text, user_message_locale):
+            self.error = error
+            self.user_message_text = user_message_text
+            self.user_message_locale = user_message_locale
+            super().__init__(user_message_text)
+
+    class HttpError(Exception):
+        def __init__(self, status_code, body):
+            self.status_code = status_code
+            self.body = body
+            super().__init__(f"HTTP {status_code}")
+
+    mock_dropbox = MagicMock()
+    mock_dropbox.files = MagicMock()
+    mock_dropbox.files.WriteMode = Mock()
+    mock_dropbox.files.WriteMode.overwrite = "overwrite"
+
+    mock_exceptions = MagicMock()
+    mock_exceptions.ApiError = ApiError
+    mock_exceptions.HttpError = HttpError
+    mock_dropbox.exceptions = mock_exceptions
+
+    sys.modules['dropbox'] = mock_dropbox
+    sys.modules['dropbox.files'] = mock_dropbox.files
+    sys.modules['dropbox.exceptions'] = mock_exceptions
+    
+    pytest.dropbox_mock = mock_dropbox
+    
+    @pytest.fixture
+    def mock_dropbox_module():
+        """Provide mock dropbox module for testing."""
+        return mock_dropbox
+except:
+    pass
+
 # --- Mock ALL RPi hardware modules ---
 _RPI_MODULES = [
     'RPi', 'RPi.GPIO', 'spidev', 'smbus', 'smbus2',
