@@ -159,29 +159,107 @@ def download(dbx, folder, subfolder, name):
     return data
 
 def upload(dbx, fullname, folder, subfolder, name, overwrite=False):
-    """Upload a file.
-    Return the request response, or None in case of error.
+    """Upload a file to Dropbox.
+    
+    Args:
+        dbx: Dropbox client instance
+        fullname: Full path to the local file to upload
+        folder: Dropbox folder name
+        subfolder: Subfolder within Dropbox folder (can be empty)
+        name: Filename to use in Dropbox
+        overwrite: Whether to overwrite if file exists
+    
+    Returns:
+        dict: Upload result with status information, or error dict on failure
+    
+    Upload result contains:
+        - status: 'success' or 'error'
+        - file_path: Dropbox path of uploaded file
+        - bytes_uploaded: Number of bytes uploaded
+        - message: Description of result
     """
     path = '/%s/%s/%s' % (folder, subfolder.replace(os.path.sep, '/'), name)
     while '//' in path:
         path = path.replace('//', '/')
+    
     mode = (dropbox.files.WriteMode.overwrite
             if overwrite
             else dropbox.files.WriteMode.add)
-    mtime = os.path.getmtime(fullname)
-    with open(fullname, 'rb') as f:
-        data = f.read()
-    with stopwatch('upload %d bytes' % len(data)):
-        try:
-            res = dbx.files_upload(
-                data, path, mode,
-                client_modified=datetime.datetime(*time.gmtime(mtime)[:6]),
-                mute=True)
-        except dropbox.exceptions.ApiError as err:
-            print('*** API error', err)
-            return None
-    print('uploaded as', res.name.encode('utf8'))
-    return res
+    
+    try:
+        # Get file size before upload
+        file_size = os.path.getsize(fullname)
+        mtime = os.path.getmtime(fullname)
+        
+        with open(fullname, 'rb') as f:
+            data = f.read()
+        
+        with stopwatch('upload %d bytes' % len(data)):
+            try:
+                res = dbx.files_upload(
+                    data, path, mode,
+                    client_modified=datetime.datetime(*time.gmtime(mtime)[:6]),
+                    mute=True)
+                print('Uploaded %s (%d bytes) -> %s' % (name, file_size, res.name))
+                return {
+                    'status': 'success',
+                    'file_path': path,
+                    'bytes_uploaded': file_size,
+                    'message': 'File uploaded successfully'
+                }
+            except dropbox.exceptions.ApiError as err:
+                error_msg = str(err)
+                if 'path' in error_msg and 'not_found' in error_msg:
+                    print('Error: Could not create subfolder, creating...')
+                    # Try creating parent folder first
+                    parent_path = '/'.join(path.split('/')[:-1])
+                    try:
+                        dbx.files_create_folder_v2(parent_path)
+                        print('Created folder:', parent_path)
+                        # Retry upload
+                        res = dbx.files_upload(
+                            data, path, mode,
+                            client_modified=datetime.datetime(*time.gmtime(mtime)[:6]),
+                            mute=True)
+                        print('Uploaded %s (%d bytes) -> %s' % (name, file_size, res.name))
+                        return {
+                            'status': 'success',
+                            'file_path': path,
+                            'bytes_uploaded': file_size,
+                            'message': 'File uploaded successfully after folder creation'
+                        }
+                    except Exception as folder_err:
+                        print('*** Failed to create folder:', folder_err)
+                        return {
+                            'status': 'error',
+                            'file_path': path,
+                            'bytes_uploaded': 0,
+                            'message': 'Failed to create folder: ' + str(folder_err)
+                        }
+                else:
+                    print('*** API error uploading %s: %s' % (name, error_msg))
+                    return {
+                        'status': 'error',
+                        'file_path': path,
+                        'bytes_uploaded': 0,
+                        'message': 'Upload failed: ' + error_msg
+                    }
+    except IOError as err:
+        print('*** IO error reading file %s: %s' % (fullname, err))
+        return {
+            'status': 'error',
+            'file_path': path,
+            'bytes_uploaded': 0,
+            'message': 'Failed to read file: ' + str(err)
+        }
+    except Exception as err:
+        print('*** Unexpected error uploading %s: %s' % (fullname, err))
+        return {
+            'status': 'error',
+            'file_path': path,
+            'bytes_uploaded': 0,
+            'message': 'Unexpected error: ' + str(err)
+        }
 
 def yesno(message, default, args):
     """Handy helper function to ask a yes/no question.
