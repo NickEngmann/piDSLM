@@ -23,7 +23,7 @@ _RPI_MODULES = [
     'w1thermsensor', 'Adafruit_DHT',
     'RPIO', 'pigpio', 'wiringpi',
     'sense_hat', 'luma.core', 'luma.oled', 'luma.led_matrix',
-    'serial',
+    'serial', 'dropbox', 'dropbox.files', 'dropbox.exceptions',
 ]
 
 for _mod in _RPI_MODULES:
