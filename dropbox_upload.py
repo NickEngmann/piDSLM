@@ -4,37 +4,98 @@ This is an example app for API v2.
 
 from __future__ import print_function
 
-import argparse
 import contextlib
 import datetime
 import os
-import six
 import sys
 import time
 import unicodedata
+import argparse
 
 if sys.version.startswith('2'):
-    input = raw_input  # noqa: E501,F821; pylint: disable=redefined-builtin,undefined-variable,useless-suppression
+    input = raw_input
 
 import dropbox
 
 # OAuth2 access token.  TODO: login etc.
 TOKEN = 'YOUR_ACCESS_TOKEN'
 
-parser = argparse.ArgumentParser(description='Sync ~/Downloads to Dropbox')
-parser.add_argument('folder', nargs='?', default='Downloads',
-                    help='Folder name in your Dropbox')
-parser.add_argument('rootdir', nargs='?', default='~/Downloads',
-                    help='Local directory to upload')
-parser.add_argument('--token', default=TOKEN,
-                    help='Access token '
-                    '(see https://www.dropbox.com/developers/apps)')
-parser.add_argument('--yes', '-y', action='store_true',
-                    help='Answer yes to all questions')
-parser.add_argument('--no', '-n', action='store_true',
-                    help='Answer no to all questions')
-parser.add_argument('--default', '-d', action='store_true',
-                    help='Take default answer on all questions')
+
+def parse_args(args=None):
+    """Parse command line arguments for Dropbox upload.
+    
+    Args:
+        args: List of arguments to parse (defaults to sys.argv[1:])
+    
+    Returns:
+        argparse.Namespace with parsed arguments
+    """
+    parser = argparse.ArgumentParser(
+        description='Sync ~/Downloads to Dropbox',
+        prog='dropbox_upload.py'
+    )
+    parser.add_argument('folder', nargs='?', default='Downloads',
+                        help='Folder name in your Dropbox')
+    parser.add_argument('rootdir', nargs='?', default='~/Downloads',
+                        help='Local directory to upload')
+    parser.add_argument('--token', default=TOKEN,
+                        help='Access token (see https://www.dropbox.com/developers/apps)')
+    parser.add_argument('--yes', '-y', action='store_true',
+                        help='Answer yes to all questions')
+    parser.add_argument('--no', '-n', action='store_true',
+                        help='Answer no to all questions')
+    parser.add_argument('--default', '-d', action='store_true',
+                        help='Take default answer on all questions')
+    parser.add_argument('--count', type=int, default=None,
+                        help='Limit number of files to upload')
+    return parser.parse_args(args)
+
+
+def should_skip_file(filename):
+    """Determine if a file should be skipped based on its name.
+    
+    Skips:
+    - Dot files (starting with .)
+    - Temporary files (ending with .tmp, .temp, starting with @ or ending with ~)
+    - Generated files (ending with .pyc or .pyo)
+    - Empty or None filenames
+    - __pycache__ directories
+    
+    Args:
+        filename: The name of the file to check
+        
+    Returns:
+        bool: True if file should be skipped, False otherwise
+    """
+    if not filename:
+        return True
+    
+    name = filename if isinstance(filename, str) else str(filename)
+    
+    # Skip empty names
+    if not name:
+        return True
+    
+    # Skip dot files (hidden files)
+    if name.startswith('.'):
+        return True
+    
+    # Skip temporary files (Mac OS and various temp extensions)
+    if name.startswith('@') or name.startswith('~') or name.endswith('~'):
+        return True
+    if name.endswith('.tmp') or name.endswith('.temp'):
+        return True
+    
+    # Skip generated Python files
+    if name.endswith('.pyc') or name.endswith('.pyo'):
+        return True
+    
+    # Skip __pycache__ directories
+    if name == '__pycache__':
+        return True
+    
+    return False
+
 
 def main():
     """Main program.
@@ -43,7 +104,7 @@ def main():
     directories, and avoids duplicate uploads by comparing size and
     mtime with the server.
     """
-    args = parser.parse_args()
+    args = parse_args()
     if sum([bool(b) for b in (args.yes, args.no, args.default)]) > 1:
         print('At most one of --yes, --no, --default is allowed')
         sys.exit(2)
@@ -64,6 +125,7 @@ def main():
 
     dbx = dropbox.Dropbox(args.token)
 
+    total_files = 0
     for dn, dirs, files in os.walk(rootdir):
         subfolder = dn[len(rootdir):].strip(os.path.sep)
         listing = list_folder(dbx, folder, subfolder)
@@ -75,13 +137,13 @@ def main():
             if not isinstance(name, six.text_type):
                 name = name.decode('utf-8')
             nname = unicodedata.normalize('NFC', name)
-            if name.startswith('.'):
-                print('Skipping dot file:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary file:', name)
-            elif name.endswith('.pyc') or name.endswith('.pyo'):
-                print('Skipping generated file:', name)
-            elif nname in listing:
+            
+            # Use the new should_skip_file helper
+            if should_skip_file(name):
+                print('Skipping file:', name)
+                continue
+            
+            if nname in listing:
                 md = listing[nname]
                 mtime = os.path.getmtime(fullname)
                 mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
@@ -103,16 +165,22 @@ def main():
                                    overwrite=True)
             elif yesno('Upload %s' % name, True, args):
                 upload(dbx, fullname, folder, subfolder, name)
+            
+            # Track total files and apply --count limit
+            total_files += 1
+            if args.count and total_files >= args.count:
+                break
+        
+        if args.count and total_files >= args.count:
+            break
 
         # Then choose which subdirectories to traverse.
         keep = []
         for name in dirs:
-            if name.startswith('.'):
-                print('Skipping dot directory:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary directory:', name)
-            elif name == '__pycache__':
-                print('Skipping generated directory:', name)
+            # Use the new should_skip_file helper for directories too
+            if should_skip_file(name):
+                print('Skipping directory:', name)
+                continue
             elif yesno('Descend into %s' % name, True, args):
                 print('Keeping directory:', name)
                 keep.append(name)
