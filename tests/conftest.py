@@ -29,6 +29,13 @@ _RPI_MODULES = [
 for _mod in _RPI_MODULES:
     sys.modules[_mod] = MagicMock()
 
+# Pre-load dropbox module to prevent auto-mocking
+# This must happen before _AutoMockFinder is activated
+try:
+    import dropbox
+except ImportError:
+    pass
+
 # Import hook: auto-mock ANY unknown hardware module during source file loading
 # This catches custom libraries like mp2624, adafruit_* variants, etc.
 # Uses find_spec (Python 3.4+) since find_module is deprecated and ignored in Python 3.12
@@ -44,6 +51,7 @@ class _AutoMockFinder(importlib.abc.MetaPathFinder):
         'threading', 'multiprocessing', 'socket', 'http', 'urllib',
         'hashlib', 'base64', 'struct', 'array', 'configparser', 'argparse',
         'unittest', 'pytest', 'glob', 'fnmatch', 'csv', 'string',
+        'dropbox',
     }
     _active = False
 
@@ -90,9 +98,8 @@ def _is_while_true(node):
     if not isinstance(node, ast.While):
         return False
     test = node.test
+    # Python 3.8+: ast.Constant replaced ast.NameConstant for True/False/None
     if isinstance(test, ast.Constant) and test.value in (True, 1):
-        return True
-    if isinstance(test, ast.NameConstant) and test.value is True:
         return True
     return False
 
