@@ -1,6 +1,5 @@
 ./__pycache__/
 ./__pycache__
-# Auto-added by Marisol pipeline
 node_modules/
 *.pyc
 .pytest_cache/
@@ -12,3 +11,9 @@ debug_*.py
 dist/
 build/
 *.egg-info/
+
+# Auto-added by Marisol pipeline
+.pio/
+.gradle/
+*.class
+local.properties
