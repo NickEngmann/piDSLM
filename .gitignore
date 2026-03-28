@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 ./__pycache__/
 ./__pycache__
 # Auto-added by Marisol pipeline
@@ -5,10 +6,62 @@ node_modules/
 *.pyc
 .pytest_cache/
 *.o
+=======
+# Python
+__pycache__/
+__pycache__
+*.py[cod]
+>>>>>>> Stashed changes
 *.so
-.env
-debug_*.py
-.cache/
-dist/
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
+<<<<<<< Updated upstream
+=======
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test/Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Debug
+debug_*.py
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+>>>>>>> Stashed changes
+
+# Auto-added by Marisol pipeline
+.cache/
+.pio/
+.gradle/
+*.class
+local.properties
