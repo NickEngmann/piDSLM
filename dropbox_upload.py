@@ -21,6 +21,48 @@ import dropbox
 # OAuth2 access token.  TODO: login etc.
 TOKEN = 'YOUR_ACCESS_TOKEN'
 
+
+def should_skip_file(filename):
+    """Check if a file should be skipped based on its name.
+
+    Args:
+        filename: The name of the file to check.
+
+    Returns:
+        True if the file should be skipped, False otherwise.
+    """
+    if not isinstance(filename, six.text_type):
+        try:
+            filename = filename.decode('utf-8')
+        except (UnicodeDecodeError, AttributeError):
+            filename = str(filename)
+
+    if filename.startswith('.'):
+        return True
+    if filename.startswith('@') or filename.startswith('~') or filename.endswith('~'):
+        return True
+    if filename.endswith('.pyc') or filename.endswith('.pyo'):
+        return True
+    return False
+
+
+def should_skip_directory(dirname):
+    """Check if a directory should be skipped based on its name.
+    
+    Args:
+        dirname: The name of the directory to check.
+        
+    Returns:
+        True if the directory should be skipped, False otherwise.
+    """
+    if dirname.startswith('.'):
+        return True
+    if dirname.startswith('@') or dirname.endswith('~'):
+        return True
+    if dirname == '__pycache__':
+        return True
+    return False
+
 parser = argparse.ArgumentParser(description='Sync ~/Downloads to Dropbox')
 parser.add_argument('folder', nargs='?', default='Downloads',
                     help='Folder name in your Dropbox')
@@ -72,16 +114,13 @@ def main():
         # First do all the files.
         for name in files:
             fullname = os.path.join(dn, name)
+            if should_skip_file(name):
+                print('Skipping file:', name)
+                continue
             if not isinstance(name, six.text_type):
                 name = name.decode('utf-8')
             nname = unicodedata.normalize('NFC', name)
-            if name.startswith('.'):
-                print('Skipping dot file:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary file:', name)
-            elif name.endswith('.pyc') or name.endswith('.pyo'):
-                print('Skipping generated file:', name)
-            elif nname in listing:
+            if nname in listing:
                 md = listing[nname]
                 mtime = os.path.getmtime(fullname)
                 mtime_dt = datetime.datetime(*time.gmtime(mtime)[:6])
@@ -107,13 +146,10 @@ def main():
         # Then choose which subdirectories to traverse.
         keep = []
         for name in dirs:
-            if name.startswith('.'):
-                print('Skipping dot directory:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary directory:', name)
-            elif name == '__pycache__':
-                print('Skipping generated directory:', name)
-            elif yesno('Descend into %s' % name, True, args):
+            if should_skip_directory(name):
+                print('Skipping directory:', name)
+                continue
+            if yesno('Descend into %s' % name, True, args):
                 print('Keeping directory:', name)
                 keep.append(name)
             else:
