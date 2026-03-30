@@ -21,6 +21,52 @@ import dropbox
 # OAuth2 access token.  TODO: login etc.
 TOKEN = 'YOUR_ACCESS_TOKEN'
 
+<<<<<<< Updated upstream
+=======
+
+def should_skip_file(filename):
+    """Check if a file should be skipped based on its name.
+
+    Args:
+        filename: The name of the file to check.
+
+    Returns:
+        True if the file should be skipped, False otherwise.
+    """
+    if not isinstance(filename, six.text_type):
+        try:
+            filename = filename.decode('utf-8')
+        except (UnicodeDecodeError, AttributeError):
+            filename = str(filename)
+
+    if filename.startswith('.'):
+        return True
+    if filename.startswith('@') or filename.startswith('~') or filename.endswith('~'):
+        return True
+    if filename.endswith('.pyc') or filename.endswith('.pyo'):
+        return True
+    return False
+
+
+def should_skip_directory(dirname):
+    """Check if a directory should be skipped based on its name.
+
+    Args:
+        dirname: The name of the directory to check.
+
+    Returns:
+        True if the directory should be skipped, False otherwise.
+    """
+    if dirname.startswith('.'):
+        return True
+    if dirname.startswith('@') or dirname.startswith('~') or dirname.endswith('~'):
+        return True
+    if dirname == '__pycache__':
+        return True
+    return False
+
+
+>>>>>>> Stashed changes
 parser = argparse.ArgumentParser(description='Sync ~/Downloads to Dropbox')
 parser.add_argument('folder', nargs='?', default='Downloads',
                     help='Folder name in your Dropbox')
@@ -29,6 +75,8 @@ parser.add_argument('rootdir', nargs='?', default='~/Downloads',
 parser.add_argument('--token', default=TOKEN,
                     help='Access token '
                     '(see https://www.dropbox.com/developers/apps)')
+parser.add_argument('--count', '-c', type=int, default=0,
+                    help='Maximum number of files to upload (0=unlimited)')
 parser.add_argument('--yes', '-y', action='store_true',
                     help='Answer yes to all questions')
 parser.add_argument('--no', '-n', action='store_true',
@@ -64,7 +112,16 @@ def main():
 
     dbx = dropbox.Dropbox(args.token)
 
+    files_uploaded = 0
+    files_skipped = 0
+    max_files = args.count
+
     for dn, dirs, files in os.walk(rootdir):
+        # Check if we've reached the upload limit
+        if max_files > 0 and files_uploaded >= max_files:
+            print(f'Upload limit reached ({max_files} files). Stopping.')
+            break
+
         subfolder = dn[len(rootdir):].strip(os.path.sep)
         listing = list_folder(dbx, folder, subfolder)
         print('Descending into', subfolder, '...')
@@ -75,12 +132,10 @@ def main():
             if not isinstance(name, six.text_type):
                 name = name.decode('utf-8')
             nname = unicodedata.normalize('NFC', name)
-            if name.startswith('.'):
-                print('Skipping dot file:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary file:', name)
-            elif name.endswith('.pyc') or name.endswith('.pyo'):
-                print('Skipping generated file:', name)
+            if should_skip_file(name):
+                print('Skipping file:', name)
+                files_skipped += 1
+                continue
             elif nname in listing:
                 md = listing[nname]
                 mtime = os.path.getmtime(fullname)
@@ -102,23 +157,32 @@ def main():
                             upload(dbx, fullname, folder, subfolder, name,
                                    overwrite=True)
             elif yesno('Upload %s' % name, True, args):
-                upload(dbx, fullname, folder, subfolder, name)
+                upload_result = upload(dbx, fullname, folder, subfolder, name)
+                if upload_result:
+                    files_uploaded += 1
+                    if max_files > 0 and files_uploaded >= max_files:
+                        print(f'Upload limit reached ({max_files} files).')
+                        dirs[:] = []  # Stop descending into subdirectories
+                        break
+
+        # If we've reached the limit, break out of the directory walk
+        if max_files > 0 and files_uploaded >= max_files:
+            break
 
         # Then choose which subdirectories to traverse.
         keep = []
         for name in dirs:
-            if name.startswith('.'):
-                print('Skipping dot directory:', name)
-            elif name.startswith('@') or name.endswith('~'):
-                print('Skipping temporary directory:', name)
-            elif name == '__pycache__':
-                print('Skipping generated directory:', name)
+            if should_skip_directory(name):
+                print('Skipping directory:', name)
             elif yesno('Descend into %s' % name, True, args):
                 print('Keeping directory:', name)
                 keep.append(name)
             else:
                 print('OK, skipping directory:', name)
         dirs[:] = keep
+
+    # Print summary
+    print(f'\nUpload complete. Files uploaded: {files_uploaded}, Skipped: {files_skipped}')
 
 def list_folder(dbx, folder, subfolder):
     """List a folder.
