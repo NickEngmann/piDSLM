@@ -92,7 +92,8 @@ def _is_while_true(node):
     test = node.test
     if isinstance(test, ast.Constant) and test.value in (True, 1):
         return True
-    if isinstance(test, ast.NameConstant) and test.value is True:
+    # ast.NameConstant is deprecated in Python 3.8+, use ast.Constant instead
+    if isinstance(test, ast.Constant) and test.value is True:
         return True
     return False
 
