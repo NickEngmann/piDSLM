@@ -21,6 +21,52 @@ import dropbox
 # OAuth2 access token.  TODO: login etc.
 TOKEN = 'YOUR_ACCESS_TOKEN'
 
+<<<<<<< Updated upstream
+=======
+
+def should_skip_file(filename):
+    """Check if a file should be skipped based on its name.
+
+    Args:
+        filename: The name of the file to check.
+
+    Returns:
+        True if the file should be skipped, False otherwise.
+    """
+    if not isinstance(filename, six.text_type):
+        try:
+            filename = filename.decode('utf-8')
+        except (UnicodeDecodeError, AttributeError):
+            filename = str(filename)
+
+    if filename.startswith('.'):
+        return True
+    if filename.startswith('@') or filename.startswith('~') or filename.endswith('~'):
+        return True
+    if filename.endswith('.pyc') or filename.endswith('.pyo'):
+        return True
+    return False
+
+
+def should_skip_directory(dirname):
+    """Check if a directory should be skipped based on its name.
+
+    Args:
+        dirname: The name of the directory to check.
+
+    Returns:
+        True if the directory should be skipped, False otherwise.
+    """
+    if dirname.startswith('.'):
+        return True
+    if dirname.startswith('@') or dirname.startswith('~') or dirname.endswith('~'):
+        return True
+    if dirname == '__pycache__':
+        return True
+    return False
+
+
+>>>>>>> Stashed changes
 parser = argparse.ArgumentParser(description='Sync ~/Downloads to Dropbox')
 parser.add_argument('folder', nargs='?', default='Downloads',
                     help='Folder name in your Dropbox')
@@ -180,7 +226,10 @@ def upload(dbx, fullname, folder, subfolder, name, overwrite=False):
         except dropbox.exceptions.ApiError as err:
             print('*** API error', err)
             return None
-    print('uploaded as', res.name.encode('utf8'))
+    if isinstance(res.name, bytes):
+        print('uploaded as', res.name.decode('utf8'))
+    else:
+        print('uploaded as', res.name)
     return res
 
 def yesno(message, default, args):
